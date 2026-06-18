@@ -61,6 +61,7 @@
       max-width: 1180px;
       margin: 0 auto;
       padding: 0 24px 64px;
+      position: relative;
     }
 
     /* ---------- masthead ---------- */
@@ -683,20 +684,39 @@
       font: 400 13.5px/1.5 var(--mono);
     }
 
-    footer {
-      margin-top: 36px;
-      padding-top: 18px;
-      border-top: 1px solid var(--hair);
-      color: var(--faint);
-      font: 400 12px/1.6 var(--mono);
-      display: flex;
-      gap: 8px 18px;
-      flex-wrap: wrap;
+    .gh {
+      position: absolute;
+      top: 32px;
+      right: 24px;
+      z-index: 5;
+      display: inline-flex;
       align-items: center;
+      gap: 9px;
+      font: 500 13px/1 var(--mono);
+      color: var(--muted);
+      text-decoration: none;
+      padding: 9px 14px;
+      border: 1px solid var(--hair);
+      border-radius: 9px;
+      background: var(--panel-2);
+      transition: border-color .14s ease, color .14s ease, transform .14s ease;
     }
 
-    footer .gen {
-      margin-left: auto;
+    .gh:hover {
+      color: var(--glow);
+      border-color: var(--glow-dim);
+      transform: translateY(-1px);
+    }
+
+    .gh:focus-visible {
+      outline: 2px solid var(--glow);
+      outline-offset: 2px;
+    }
+
+    .gh svg {
+      width: 18px;
+      height: 18px;
+      flex: none;
     }
 
     @media (max-width: 760px) {
@@ -732,12 +752,30 @@
       .lrow .lbar {
         display: none;
       }
+
+      /* collapse to icon-only so it never overlaps the heading */
+      .gh span {
+        display: none;
+      }
+
+      .gh {
+        top: 24px;
+        padding: 9px;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
+
+    <a class="gh" href="https://github.com/nalepae/clients-diversity" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path fill="currentColor" fill-rule="evenodd"
+          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+      </svg>
+      <span>nalepae/clients-diversity</span>
+    </a>
 
     <header class="masthead">
       <div>
@@ -769,17 +807,18 @@
         <p>Blocks without the client identification are counted as <b>unknown</b>.</p>
 
         <p>Many blocks carry no client identification, so every share is a <b>lower bound</b>: read it as “this client
-          has <i>at least</i> X% of blocks”.<br>The true share is likely higher. Three reasons blocks stay
-          unidentified:</p>
+          has <i>at least</i> X% of blocks”.<br>The true share is likely higher.</p>
+        <p>Three reasons blocks stay
+          unidentified (see the <span class="ic">ⓘ</span> beside each
+          client below):</p>
 
         <ul>
-          <li>Each client added or changed the client identification behaviour at a different version, some only
-            after the <b>Fusaka</b> fork. See the <span class="ic">ⓘ</span> beside each
-            client below.</li>
+          <li>Clients added or changed the client identification behaviour at a different version, some only
+            after the <b>Fusaka</b> fork.</li>
           <li>Among major clients, <b>Nimbus</b> does not implement this client identification feature yet
             (<a href="https://github.com/status-im/nimbus-eth2/issues/7580" target="_blank"
               rel="noopener">nimbus-eth2#7580</a>).</li>
-          <li>Every client implement this feature, except <b>Prysm</b>, offers a way to disable the client
+          <li>Every client implementing this feature, except <b>Prysm</b>, offers a way to disable the client
             identification.</li>
         </ul>
 
@@ -799,11 +838,6 @@
 
     <main id="charts"></main>
 
-    <footer>
-      <span>Ethereum mainnet · 12s slots</span>
-      <span>Identification via block graffiti — unattributed blocks shown as “unknown”.</span>
-      <span class="gen" id="genline"></span>
-    </footer>
   </div>
 
   <div class="tip" id="tip"></div>
@@ -826,7 +860,7 @@
 
       // Notable releases annotated on the timeline as dashed vertical markers.
       const EVENTS = [
-        { date: "2026-05-22", label: "Prysm v7.1.4 release - start client identification" },
+        { date: "2026-05-22", label: "Prysm V7.1.4 release - start client identification" },
       ];
 
       // Measured categorical palette — luminous on deep blue, none neon.
@@ -930,9 +964,6 @@
         root.innerHTML = stats.map((s) =>
           '<div class="stat ' + (s.cls || "") + '"><div class="k">' + s.k +
           '</div><div class="v">' + s.v + "</div></div>").join("");
-
-        document.getElementById("genline").textContent =
-          "generated " + (data.meta?.generatedAt || "unknown");
       }
 
       // ---------- geometry ----------
