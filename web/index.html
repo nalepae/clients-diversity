@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ethereum Client Diversity · Block Production</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0A0E17;
+      --bg-2: #0C111C;
+      --panel: #111725;
+      --panel-2: #0E1320;
+      --hair: #1E2738;
+      --hair-soft: #161D2B;
+      --ink: #EAEEF7;
+      --muted: #7E8AA3;
+      --faint: #515D74;
+      --glow: #FFB454;
+      /* amber instrument accent */
+      --glow-dim: #b9823a;
+      --danger: #FF8A6B;
+      --unknown: #39414F;
+
+      --r: 12px;
+      --r-sm: 8px;
+      --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --display: "Archivo", var(--sans);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      font: 15px/1.55 var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, #131b2c 0%, rgba(19, 27, 44, 0) 60%),
+        radial-gradient(900px 500px at -10% 0%, #101626 0%, rgba(16, 22, 38, 0) 55%),
+        var(--bg);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+    }
+
+    /* ---------- masthead ---------- */
+    .masthead {
+      padding: 40px 0 26px;
+      border-bottom: 1px solid var(--hair);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px 40px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      font: 600 11.5px/1 var(--mono);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--glow);
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--glow);
+      box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.6);
+      animation: pulse 2.6s ease-out infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.55);
+      }
+
+      70% {
+        box-shadow: 0 0 0 7px rgba(255, 180, 84, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 180, 84, 0);
+      }
+    }
+
+    h1 {
+      font: 800 clamp(30px, 5.4vw, 52px)/0.98 var(--display);
+      letter-spacing: -0.015em;
+      margin: 14px 0 10px;
+    }
+
+    h1 .thin {
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .lede {
+      color: var(--muted);
+      max-width: 46ch;
+      font-size: 14.5px;
+    }
+
+    .lede b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* live readout cluster */
+    .readout {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: max-content;
+      gap: 0;
+      border: 1px solid var(--hair);
+      border-radius: var(--r);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      overflow: hidden;
+    }
+
+    .stat {
+      padding: 13px 18px;
+      border-left: 1px solid var(--hair-soft);
+    }
+
+    .stat:first-child {
+      border-left: 0;
+    }
+
+    .stat .k {
+      font: 600 10px/1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+
+    .stat .v {
+      font: 500 19px/1.1 var(--mono);
+      margin-top: 7px;
+      color: var(--ink);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat .v small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .stat.flag .v {
+      color: var(--glow);
+    }
+
+    .stat.alert .v {
+      color: var(--danger);
+    }
+
+    /* ---------- console / controls ---------- */
+    .console {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 22px 0 4px;
+    }
+
+    .seg {
+      display: inline-flex;
+      padding: 3px;
+      background: var(--panel-2);
+      border: 1px solid var(--hair);
+      border-radius: 10px;
+    }
+
+    .seg button {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      font: 600 12.5px/1 var(--mono);
+      letter-spacing: 0.04em;
+      padding: 8px 16px;
+      border-radius: 7px;
+      transition: color .16s ease, background .16s ease;
+    }
+
+    .seg button:hover {
+      color: var(--ink);
+    }
+
+    .seg button.active {
+      background: var(--glow);
+      color: #0A0E17;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 6px 18px -8px rgba(255, 180, 84, 0.7);
+    }
+
+    .console .hint {
+      font: 400 12.5px/1.4 var(--mono);
+      color: var(--faint);
+    }
+
+    /* ---------- panels ---------- */
+    main {
+      display: grid;
+      gap: 22px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--hair);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 16px 20px 12px;
+    }
+
+    .panel-head .tag {
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.16em;
+      color: #0A0E17;
+      background: var(--muted);
+      padding: 5px 8px;
+      border-radius: 5px;
+      text-transform: uppercase;
+    }
+
+    .panel-head h2 {
+      font: 600 16px/1 var(--display);
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+
+    .panel-head .meta {
+      margin-left: auto;
+      font: 400 12px/1 var(--mono);
+      color: var(--faint);
+    }
+
+    .scope {
+      padding: 4px 12px 8px;
+      position: relative;
+    }
+
+    svg.chart {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    svg.chart text {
+      font-family: var(--mono);
+    }
+
+    .gridline {
+      stroke: var(--hair-soft);
+      stroke-width: 1;
+    }
+
+    .baseline {
+      stroke: var(--hair);
+      stroke-width: 1.25;
+    }
+
+    .axislabel {
+      fill: var(--faint);
+      font-size: 10.5px;
+    }
+
+    .axislabel.y {
+      font-size: 11px;
+    }
+
+    .crosshair {
+      stroke: var(--glow);
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+      opacity: 0;
+    }
+
+    .band {
+      stroke-width: 1;
+      transition: opacity .15s ease;
+      cursor: crosshair;
+    }
+
+    /* load reveal */
+    .areas {
+      clip-path: inset(0 0 0 0);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .areas.reveal {
+        animation: wipe .9s cubic-bezier(.22, .61, .36, 1) both;
+      }
+
+      @keyframes wipe {
+        from {
+          clip-path: inset(0 100% 0 0);
+        }
+
+        to {
+          clip-path: inset(0 0 0 0);
+        }
+      }
+    }
+
+    /* ---------- legend leaderboard ---------- */
+    .legend {
+      padding: 6px 16px 18px;
+      display: grid;
+      gap: 2px;
+    }
+
+    .lrow {
+      display: grid;
+      grid-template-columns: 14px minmax(96px, 1fr) 64px 120px;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: var(--ink);
+      font: inherit;
+      padding: 7px 8px;
+      border-radius: var(--r-sm);
+      transition: background .14s ease;
+    }
+
+    .lrow:hover {
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .lrow .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .lrow .lname {
+      font-size: 13.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lrow .lname .sub {
+      color: var(--faint);
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .lrow .lpct {
+      font: 500 13px/1 var(--mono);
+      color: var(--muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lrow .lbar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--hair-soft);
+      overflow: hidden;
+    }
+
+    .lrow .lbar>i {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .lrow.off {
+      opacity: 0.38;
+    }
+
+    .lrow.off .lbar>i {
+      background: var(--faint) !important;
+    }
+
+    .lrow .alarm {
+      font: 600 9px/1 var(--mono);
+      letter-spacing: .08em;
+      color: var(--glow);
+      border: 1px solid var(--glow-dim);
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .lrow .info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      margin-left: 7px;
+      vertical-align: middle;
+      font: 700 10px/1 var(--mono);
+      color: var(--glow);
+      border: 1px solid var(--glow-dim);
+      border-radius: 50%;
+      cursor: help;
+    }
+
+    .lrow .info:hover {
+      background: rgba(255, 180, 84, 0.14);
+      border-color: var(--glow);
+    }
+
+    .lrow:focus-visible,
+    .seg button:focus-visible {
+      outline: 2px solid var(--glow);
+      outline-offset: 2px;
+    }
+
+    /* ---------- method panel ---------- */
+    .method-body {
+      padding: 2px 20px 24px;
+    }
+
+    .method-body p {
+      color: var(--muted);
+      margin: 0 0 15px;
+      font-size: 14.5px;
+    }
+
+    .method-body p b,
+    .method-body li b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .method-body ul {
+      margin: 0 0 15px;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
+    .method-body li {
+      margin: 5px 0;
+    }
+
+
+    .method-body .ic {
+      color: var(--glow);
+      font-weight: 600;
+    }
+
+    .method-body li a {
+      color: var(--glow);
+      text-decoration: none;
+      border-bottom: 1px solid var(--glow-dim);
+    }
+
+    .method-body li a:hover {
+      color: #ffd18a;
+    }
+
+    .method-body code {
+      font: 500 12.5px/1 var(--mono);
+      background: var(--panel-2);
+      border: 1px solid var(--hair-soft);
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: var(--ink);
+    }
+
+    .method-body p a {
+      color: var(--glow);
+      text-decoration: none;
+      border-bottom: 1px solid var(--glow-dim);
+    }
+
+    .method-body a:hover {
+      color: #ffd18a;
+    }
+
+    .method-body a:focus-visible {
+      outline: 2px solid var(--glow);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    .anatomy {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin: 2px 0 20px;
+    }
+
+    .chip {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      align-items: flex-start;
+    }
+
+    .chip .ch {
+      font: 600 22px/1 var(--mono);
+      letter-spacing: 0.04em;
+      padding: 11px 13px;
+      border-radius: 9px;
+      border: 1px solid var(--hair);
+    }
+
+    .chip .lbl {
+      font: 500 9.5px/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--faint);
+      padding-left: 3px;
+    }
+
+    .chip.el .ch {
+      color: #0A0E17;
+      background: var(--glow);
+      border-color: transparent;
+    }
+
+    .chip.cl .ch {
+      color: #0A0E17;
+      background: #6E9BFF;
+      border-color: transparent;
+    }
+
+    .chip.hash .ch {
+      color: var(--muted);
+      background: var(--panel-2);
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 12px;
+      margin: 4px 0 16px;
+    }
+
+    .links .lnk {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font: 500 13px/1 var(--mono);
+      padding: 10px 14px;
+      border: 1px solid var(--hair);
+      border-radius: 9px;
+      background: var(--panel-2);
+      color: var(--ink);
+      text-decoration: none;
+      transition: border-color .14s ease, color .14s ease, transform .14s ease;
+    }
+
+    .links .lnk:hover {
+      border-color: var(--glow-dim);
+      color: var(--glow);
+      transform: translateY(-1px);
+    }
+
+    .links .lnk:focus-visible {
+      outline: 2px solid var(--glow);
+      outline-offset: 2px;
+    }
+
+    .method-body .ex {
+      font-size: 13.5px;
+      margin-bottom: 0;
+    }
+
+    /* ---------- tooltip ---------- */
+    .tip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+      background: rgba(10, 14, 23, 0.94);
+      border: 1px solid var(--hair);
+      border-radius: 10px;
+      padding: 11px 12px;
+      min-width: 200px;
+      max-width: 280px;
+      box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+    }
+
+    .tip .tdate {
+      font: 600 12px/1 var(--mono);
+      color: var(--ink);
+      margin-bottom: 3px;
+    }
+
+    .tip .tmeta {
+      font: 400 10.5px/1 var(--mono);
+      color: var(--faint);
+      margin-bottom: 9px;
+    }
+
+    .tip .trow {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 2.5px 0;
+    }
+
+    .tip .trow .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+    }
+
+    .tip .trow .tn {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tip .trow .tv {
+      font: 500 12px/1 var(--mono);
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tip .tnote {
+      font: 400 12px/1.55 var(--sans);
+      color: var(--muted);
+      white-space: normal;
+    }
+
+    .err {
+      margin-top: 20px;
+      padding: 16px 18px;
+      border: 1px solid #45302e;
+      background: #1a1311;
+      border-radius: var(--r);
+      color: var(--danger);
+      font: 400 13.5px/1.5 var(--mono);
+    }
+
+    footer {
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid var(--hair);
+      color: var(--faint);
+      font: 400 12px/1.6 var(--mono);
+      display: flex;
+      gap: 8px 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    footer .gen {
+      margin-left: auto;
+    }
+
+    @media (max-width: 760px) {
+      .masthead {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .readout {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stat {
+        border-left: 0;
+        border-top: 1px solid var(--hair-soft);
+      }
+
+      .stat:first-child,
+      .stat:nth-child(2) {
+        border-top: 0;
+      }
+
+      .stat:nth-child(even) {
+        border-left: 1px solid var(--hair-soft);
+      }
+
+      .lrow {
+        grid-template-columns: 14px 1fr 56px;
+      }
+
+      .lrow .lbar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <header class="masthead">
+      <div>
+        <span class="eyebrow" id="eyebrow">Ethereum Mainnet · Block production</span>
+        <h1>Client&nbsp;Diversity<br><span class="thin">who proposes the blocks</span></h1>
+        <p class="lede">Share of mainnet blocks by the software that proposed them, inferred from
+          block graffiti.</p>
+      </div>
+      <div class="readout" id="readout"><!-- live stats injected --></div>
+    </header>
+
+    <section class="panel method">
+      <div class="panel-head">
+        <span class="tag">Method</span>
+        <h2>How this is measured</h2>
+        <span class="meta">read shares as a floor</span>
+      </div>
+      <div class="method-body">
+        <p>Each block's proposer is inferred from a small client identification segment in the block's
+          <b>graffiti</b>.
+        </p>
+        <p>Examples:</p>
+        <ul>
+          <li><a href="https://light-mainnet.beaconcha.in/slot/14575362" target="_blank" rel="noopener">ssv.network
+              BUde8dTK6c8b</a> for Besu/Teku</li>
+          <li><a href="https://light-mainnet.beaconcha.in/slot/14575329" target="_blank" rel="noopener">𝕡𝟚𝕡․𝕠𝕣𝕘
+              BUPR</a> for Besu/Prysm</li>
+        </ul>
+        <p>Blocks without the client identification are counted as <b>unknown</b>.</p>
+
+        <p>Many blocks carry no client identification, so every share is a <b>lower bound</b>: read it as “this client
+          has <i>at least</i> X% of blocks”.<br>The true share is likely higher. Three reasons blocks stay
+          unidentified:</p>
+
+        <ul>
+          <li>Each client added or changed the client identification behaviour at a different version, some only
+            after the <b>Fusaka</b> fork. See the <span class="ic">ⓘ</span> beside each
+            client below.</li>
+          <li>Among major clients, <b>Nimbus</b> does not implement this client identification feature yet
+            (<a href="https://github.com/status-im/nimbus-eth2/issues/7580" target="_blank"
+              rel="noopener">nimbus-eth2#7580</a>).</li>
+          <li>Every client implement this feature, except <b>Prysm</b>, offers a way to disable the client
+            identification.</li>
+        </ul>
+
+        <p class="ex">Conversely, a validator could deliberately set a <i>false</i> client identification code in its
+          graffiti,
+          inflating that client's apparent share — but this is very unlikely.</p>
+      </div>
+    </section>
+
+    <div class="console">
+      <div class="seg" id="mode-toggle" role="group" aria-label="Value mode">
+        <button data-mode="pct" class="active">Share %</button>
+        <button data-mode="abs">Blocks</button>
+      </div>
+      <span class="hint">Click a client to mute it</span>
+    </div>
+
+    <main id="charts"></main>
+
+    <footer>
+      <span>Ethereum mainnet · 12s slots</span>
+      <span>Identification via block graffiti — unattributed blocks shown as “unknown”.</span>
+      <span class="gen" id="genline"></span>
+    </footer>
+  </div>
+
+  <div class="tip" id="tip"></div>
+
+  <script>
+    (async function () {
+      "use strict";
+
+      const W = 1000, H = 300, PAD = { l: 52, r: 18, t: 16, b: 30 };
+      const DIVERSITY_LIMIT = 33.3; // a single client above this is a known network risk
+
+      // Per-consensus-client hover notes shown on legend rows: when each client
+      // started emitting the identification graffiti, how it treats a custom
+      // graffiti, and any flag to disable the client identification. Keyed by CL code.
+      const CLIENT_NOTES = {
+        PM: "Before v7.1.3 included, Prysm does not add the client identification.",
+        LH: "Before v8.1.3 included, Lighthouse does not add the client identification by default if a custom graffiti is set.",
+        LS: "Lodestar does not add the client identification if a custom graffiti is set.",
+      };
+
+      // Measured categorical palette — luminous on deep blue, none neon.
+      const PALETTE = [
+        "#6E9BFF", "#5AD1A8", "#F2C14E", "#EF6F8E", "#B79CFF",
+        "#6FD0E8", "#E8956B", "#C7D45E", "#9DA7C7", "#4F86C6",
+      ];
+      const UNKNOWN_COLOR = getComputedStyle(document.documentElement)
+        .getPropertyValue("--unknown").trim() || "#39414F";
+
+      // ---------- data ----------
+      async function loadData() {
+        let res;
+        try {
+          res = await fetch("./data.json", { cache: "no-store" });
+        } catch (_) {
+          throw new Error("Could not load data.json — serve the web/ folder over HTTP.");
+        }
+        if (!res.ok) {
+          throw new Error("Could not load data.json (HTTP " + res.status + ").");
+        }
+        return await res.json();
+      }
+
+      let data, mode = "pct";
+      // "unknown" starts muted so the chart opens on the identified clients.
+      const hidden = { cl: new Set(["unknown"]), el: new Set(["unknown"]) };
+
+      try {
+        data = await loadData();
+      } catch (e) {
+        document.getElementById("charts").innerHTML =
+          '<div class="err">' + esc(e.message) + "</div>";
+        return;
+      }
+
+      const days = data.days || [];
+      if (!days.length) {
+        document.getElementById("charts").innerHTML =
+          '<div class="err">No completed days yet — the job ingests finalized UTC days only.</div>';
+        return;
+      }
+
+      // ---------- aggregation helpers ----------
+      function dayValue(d, layer, code) { return (d[layer] && d[layer][code]) || 0; }
+      function dayTotal(d, layer) {
+        const b = d[layer] || {}; let s = 0; for (const k in b) s += b[k]; return s;
+      }
+
+      // Series ordered by grand total DESCENDING (incl. unknown) so the largest band
+      // sits on the baseline. Colors are assigned to known clients by rank; unknown
+      // is always the recessive slate regardless of where it ranks.
+      function seriesFor(layer) {
+        const names = layer === "cl" ? (data.meta?.clCodes || {}) : (data.meta?.elCodes || {});
+        const last = days[days.length - 1][layer] || {};
+        const totals = {}; let unknownTotal = 0;
+        for (const d of days) {
+          const b = d[layer] || {};
+          for (const code of Object.keys(b)) {
+            if (code === "unknown") { unknownTotal += b[code]; continue; }
+            totals[code] = (totals[code] || 0) + b[code];
+          }
+        }
+        // Only clients with at least one block on the latest completed day, so the
+        // chart and legend never show a client sitting at 0.
+        const known = Object.keys(totals).filter((c) => (last[c] || 0) > 0)
+          .sort((a, b) => totals[b] - totals[a]);
+        const color = {}; known.forEach((c, i) => { color[c] = PALETTE[i % PALETTE.length]; });
+
+        const all = known.map((c) => ({ code: c, total: totals[c] }));
+        all.push({ code: "unknown", total: unknownTotal });
+        all.sort((a, b) => b.total - a.total);
+
+        return all.map((x) => ({
+          code: x.code,
+          name: x.code === "unknown" ? "Unknown" : (names[x.code] || x.code),
+          color: x.code === "unknown" ? UNKNOWN_COLOR : color[x.code],
+          total: x.total,
+        }));
+      }
+
+      const charts = [
+        { layer: "cl", title: "Consensus layer", tag: "CL" },
+        { layer: "el", title: "Execution layer", tag: "EL" },
+      ].map((c) => ({ ...c, series: seriesFor(c.layer) }));
+
+      // ---------- masthead readout ----------
+      function buildReadout() {
+        const last = days[days.length - 1];
+        let totalBlocks = 0, identified = 0;
+        for (const d of days) { totalBlocks += d.totalBlocks || 0; identified += d.identifiedBlocks || 0; }
+        const idRate = totalBlocks ? (identified / totalBlocks) * 100 : 0;
+
+        const stats = [
+          { k: "Window", v: days.length + " <small>days</small>" },
+          { k: "Range", v: days[0].date.slice(5) + " → " + last.date.slice(5) },
+          { k: "Blocks", v: fmtFull(totalBlocks) },
+          { k: "Identified", v: idRate.toFixed(1) + "<small>%</small>" },
+        ];
+        const root = document.getElementById("readout");
+        root.innerHTML = stats.map((s) =>
+          '<div class="stat ' + (s.cls || "") + '"><div class="k">' + s.k +
+          '</div><div class="v">' + s.v + "</div></div>").join("");
+
+        document.getElementById("genline").textContent =
+          "generated " + (data.meta?.generatedAt || "unknown");
+      }
+
+      // ---------- geometry ----------
+      function xFor(i) {
+        if (days.length <= 1) return PAD.l + (W - PAD.l - PAD.r) / 2;
+        return PAD.l + (i * (W - PAD.l - PAD.r)) / (days.length - 1);
+      }
+      function yFor(frac) { return PAD.t + (1 - frac) * (H - PAD.t - PAD.b); }
+
+      // Peak stacked value across days, used as the top of the y-axis:
+      //   abs => max block count;  pct => max stacked share of total in (0,1].
+      // Muting clients lowers it, so the chart zooms to fill instead of leaving
+      // empty space (e.g. below 100% once "unknown" is hidden).
+      function vScale(chart, visible) {
+        let scale = mode === "abs" ? 1 : 0;
+        for (const d of days) {
+          let stacked = 0;
+          for (const s of visible) stacked += dayValue(d, chart.layer, s.code);
+          const v = mode === "abs" ? stacked : stacked / Math.max(dayTotal(d, chart.layer), 1);
+          if (v > scale) scale = v;
+        }
+        return scale > 0 ? scale : 1;
+      }
+
+      // Plot height fraction (0..1) for one client's value on a given day,
+      // relative to the current vertical scale.
+      function valFrac(chart, d, code, scale) {
+        return mode === "abs"
+          ? dayValue(d, chart.layer, code) / scale
+          : (dayValue(d, chart.layer, code) / Math.max(dayTotal(d, chart.layer), 1)) / scale;
+      }
+
+      // ---------- render ----------
+      const root = document.getElementById("charts");
+      const tip = document.getElementById("tip");
+
+      function render() {
+        root.innerHTML = "";
+        for (const chart of charts) root.appendChild(renderPanel(chart));
+      }
+
+      function renderPanel(chart) {
+        const panel = document.createElement("section");
+        panel.className = "panel";
+
+        const head = document.createElement("div");
+        head.className = "panel-head";
+        head.innerHTML =
+          '<span class="tag">' + chart.tag + '</span>' +
+          '<h2>' + esc(chart.title) + '</h2>' +
+          '<span class="meta">' + (mode === "pct" ? "share of all blocks" : "blocks / day") + '</span>';
+        panel.appendChild(head);
+
+        const visible = chart.series.filter((s) => !hidden[chart.layer].has(s.code));
+
+        const scale = vScale(chart, visible);
+        const topPct = scale * 100;                  // pct mode: % at the top of the axis
+        const pctDigits = topPct < 12 ? 1 : 0;
+
+        const scope = document.createElement("div");
+        scope.className = "scope";
+        const svg = el("svg", {
+          viewBox: "0 0 " + W + " " + H, class: "chart", preserveAspectRatio: "none", role: "img",
+          "aria-label": chart.title + " client distribution over time"
+        });
+
+        // grid + y labels
+        const ticks = 4;
+        for (let t = 0; t <= ticks; t++) {
+          const frac = t / ticks, y = yFor(frac);
+          svg.appendChild(el(t === 0 ? "line" : "line",
+            { x1: PAD.l, y1: y, x2: W - PAD.r, y2: y, class: t === 0 ? "baseline" : "gridline" }));
+          const label = mode === "pct" ? (frac * topPct).toFixed(pctDigits) + "%" : fmtNum(frac * scale);
+          svg.appendChild(text(PAD.l - 8, y + 3.5, label, { "text-anchor": "end", class: "axislabel y" }));
+        }
+
+        // stacked areas (index 0 = largest = baseline)
+        const areas = el("g", { class: "areas reveal" });
+        const pathByCode = {};
+        const cumBelow = days.map(() => 0);
+        for (const s of visible) {
+          const topPts = [], botPts = [];
+          days.forEach((d, i) => {
+            const v = valFrac(chart, d, s.code, scale);
+            const x = xFor(i);
+            botPts.push([x, yFor(cumBelow[i])]);
+            cumBelow[i] += v;
+            topPts.push([x, yFor(cumBelow[i])]);
+          });
+          const path =
+            topPts.map((p, i) => (i ? "L" : "M") + r1(p[0]) + " " + r1(p[1])).join(" ") + " " +
+            botPts.reverse().map((p) => "L" + r1(p[0]) + " " + r1(p[1])).join(" ") + " Z";
+          const node = el("path", {
+            d: path, class: "band", fill: s.color,
+            "fill-opacity": s.code === "unknown" ? 0.5 : 0.88,
+            stroke: s.color, "stroke-opacity": s.code === "unknown" ? 0.5 : 1
+          });
+          pathByCode[s.code] = node;
+          areas.appendChild(node);
+        }
+        svg.appendChild(areas);
+
+        // x labels (~7)
+        const labelCount = Math.min(days.length, 7);
+        for (let k = 0; k < labelCount; k++) {
+          const i = labelCount === 1 ? 0 : Math.round((k * (days.length - 1)) / (labelCount - 1));
+          svg.appendChild(text(xFor(i), H - PAD.b + 17, days[i].date.slice(5), { "text-anchor": "middle", class: "axislabel" }));
+        }
+
+        // crosshair + hover overlay
+        const cross = el("line", { x1: 0, y1: PAD.t, x2: 0, y2: H - PAD.b, class: "crosshair" });
+        svg.appendChild(cross);
+        const marker = el("circle", { r: 3.5, fill: "#0A0E17", stroke: "var(--glow)", "stroke-width": 1.5, opacity: 0 });
+        svg.appendChild(marker);
+        const overlay = el("rect", { x: PAD.l, y: PAD.t, width: W - PAD.l - PAD.r, height: H - PAD.t - PAD.b, fill: "transparent" });
+        overlay.addEventListener("mousemove", (ev) => onHover(ev, svg, chart, visible, cross, marker));
+        overlay.addEventListener("mouseleave", () => {
+          tip.style.display = "none"; cross.setAttribute("opacity", 0); marker.setAttribute("opacity", 0);
+        });
+        svg.appendChild(overlay);
+
+        scope.appendChild(svg);
+        panel.appendChild(scope);
+        panel.appendChild(renderLegend(chart, pathByCode));
+        return panel;
+      }
+
+      function onHover(ev, svg, chart, visible, cross, marker) {
+        const rect = svg.getBoundingClientRect();
+        const svgX = ((ev.clientX - rect.left) / rect.width) * W;
+        let i = 0;
+        if (days.length > 1) {
+          i = Math.round(((svgX - PAD.l) / (W - PAD.l - PAD.r)) * (days.length - 1));
+          i = Math.max(0, Math.min(days.length - 1, i));
+        }
+        const d = days[i], x = xFor(i);
+        cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("opacity", 0.8);
+
+        const scale = vScale(chart, visible);
+        let stackedFrac = 0;
+        for (const s of visible) stackedFrac += valFrac(chart, d, s.code, scale);
+        marker.setAttribute("cx", x);
+        marker.setAttribute("cy", yFor(stackedFrac));
+        marker.setAttribute("opacity", 1);
+
+        const total = dayTotal(d, chart.layer);
+        let html = '<div class="tdate">' + d.date + '</div>' +
+          '<div class="tmeta">' + fmtFull(d.totalBlocks) + ' blocks · ' +
+          ((d.identifiedBlocks / d.totalBlocks) * 100).toFixed(1) + '% identified</div>';
+        // Rows sorted by popularity on the hovered day, ascending to match the
+        // legend and the bottom-to-top stack: least popular first.
+        const rows = [...visible].sort((a, b) =>
+          dayValue(d, chart.layer, a.code) - dayValue(d, chart.layer, b.code));
+        for (const s of rows) {
+          const v = dayValue(d, chart.layer, s.code);
+          if (v === 0) continue;
+          const pct = total ? ((v / total) * 100).toFixed(1) + "%" : "0%";
+          const val = mode === "pct" ? pct : fmtFull(v) + " · " + pct;
+          html += '<div class="trow"><span class="dot" style="background:' + s.color + '"></span>' +
+            '<span class="tn">' + esc(s.name) + '</span><span class="tv">' + val + "</span></div>";
+        }
+        tip.innerHTML = html;
+        tip.style.display = "block";
+        let tx = ev.clientX + 16, ty = ev.clientY + 16;
+        const tw = tip.offsetWidth, th = tip.offsetHeight;
+        if (tx + tw > window.innerWidth - 8) tx = ev.clientX - tw - 16;
+        if (ty + th > window.innerHeight - 8) ty = window.innerHeight - th - 8;
+        tip.style.left = tx + "px"; tip.style.top = ty + "px";
+      }
+
+      function renderLegend(chart, pathByCode) {
+        const last = days[days.length - 1];
+        const total = dayTotal(last, chart.layer) || 1;
+        const wrap = document.createElement("div");
+        wrap.className = "legend";
+
+        // Sorted by popularity on the latest day: least popular first, most popular
+        // (usually unknown) last — matching the displayed shares.
+        const ordered = [...chart.series].sort((a, b) =>
+          dayValue(last, chart.layer, a.code) - dayValue(last, chart.layer, b.code));
+        for (const s of ordered) {
+          const v = dayValue(last, chart.layer, s.code);
+          const share = (v / total) * 100;
+          const isOff = hidden[chart.layer].has(s.code);
+          const flagged = s.code !== "unknown" && share > DIVERSITY_LIMIT;
+
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "lrow" + (isOff ? " off" : "");
+          row.setAttribute("aria-pressed", String(!isOff));
+          row.innerHTML =
+            '<span class="swatch" style="background:' + s.color + '"></span>' +
+            '<span class="lname">' + esc(s.name) +
+            (s.code === "unknown" ? ' <span class="sub">no graffiti ID</span>' : '') +
+            (CLIENT_NOTES[s.code] ? ' <span class="info" role="img" aria-label="' + esc(CLIENT_NOTES[s.code]) + '">i</span>' : '') +
+            (flagged ? ' <span class="alarm">&gt;⅓</span>' : '') + '</span>' +
+            '<span class="lpct">' + share.toFixed(1) + '%</span>' +
+            '<span class="lbar"><i style="width:' + Math.min(100, share).toFixed(1) +
+            '%;background:' + s.color + '"></i></span>';
+
+          row.addEventListener("click", () => {
+            const set = hidden[chart.layer];
+            if (set.has(s.code)) set.delete(s.code); else set.add(s.code);
+            render();
+          });
+          // dim sibling bands on hover for quick scanning
+          row.addEventListener("mouseenter", () => {
+            for (const code in pathByCode) if (code !== s.code) pathByCode[code].style.opacity = 0.22;
+          });
+          row.addEventListener("mouseleave", () => {
+            for (const code in pathByCode) pathByCode[code].style.opacity = "";
+          });
+
+          // Instant info tooltip on the client badge (reuses the fixed-position
+          // #tip so it is never clipped by the panel's overflow).
+          const info = row.querySelector(".info");
+          if (info) {
+            info.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); });
+            info.addEventListener("mouseenter", () => {
+              tip.innerHTML = '<div class="tdate">' + esc(s.name) + '</div>' +
+                '<div class="tnote">' + esc(CLIENT_NOTES[s.code]) + '</div>';
+              tip.style.display = "block";
+              const r = info.getBoundingClientRect();
+              const tw = tip.offsetWidth, th = tip.offsetHeight;
+              let tx = r.left, ty = r.bottom + 8;
+              if (tx + tw > window.innerWidth - 8) tx = window.innerWidth - tw - 8;
+              if (ty + th > window.innerHeight - 8) ty = r.top - th - 8;
+              tip.style.left = tx + "px"; tip.style.top = ty + "px";
+            });
+            info.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+          }
+
+          wrap.appendChild(row);
+        }
+        return wrap;
+      }
+
+      // ---------- tiny helpers ----------
+      function el(tag, attrs) {
+        const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        for (const k in attrs) n.setAttribute(k, attrs[k]);
+        return n;
+      }
+      function text(x, y, str, attrs) {
+        const t = el("text", Object.assign({ x: r1(x), y: r1(y) }, attrs || {}));
+        t.textContent = str; return t;
+      }
+      function r1(n) { return Math.round(n * 10) / 10; }
+      function fmtNum(n) { n = Math.round(n); return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k" : String(n); }
+      function fmtFull(n) { return Math.round(n).toLocaleString("en-US"); }
+      function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+      // ---------- wire up ----------
+      document.getElementById("mode-toggle").addEventListener("click", (ev) => {
+        const btn = ev.target.closest("button");
+        if (!btn) return;
+        mode = btn.dataset.mode;
+        for (const b of document.querySelectorAll("#mode-toggle button")) b.classList.toggle("active", b === btn);
+        render();
+      });
+
+      buildReadout();
+      render();
+    })();
+  </script>
+</body>
+
+</html>

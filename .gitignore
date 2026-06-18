@@ -1,0 +1,9 @@
+# Runtime datastore written by the fetcher, served by the web page.
+# Pure runtime output — never committed.
+web/data.json
+
+# Build output
+bin/
+
+# Local deployment config (BEACON_URL, etc.)
+.env
