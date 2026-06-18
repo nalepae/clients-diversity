@@ -308,6 +308,19 @@
       opacity: 0;
     }
 
+    .event-line {
+      stroke: var(--ink);
+      stroke-width: 1;
+      stroke-dasharray: 4 4;
+      opacity: 0.4;
+    }
+
+    .event-label {
+      fill: var(--muted);
+      font-size: 9.5px;
+      font-weight: 600;
+    }
+
     .band {
       stroke-width: 1;
       transition: opacity .15s ease;
@@ -810,6 +823,11 @@
         LS: "Lodestar does not add the client identification if a custom graffiti is set.",
       };
 
+      // Notable releases annotated on the timeline as dashed vertical markers.
+      const EVENTS = [
+        { date: "2026-05-22", label: "Prysm v7.1.4" },
+      ];
+
       // Measured categorical palette — luminous on deep blue, none neon.
       const PALETTE = [
         "#6E9BFF", "#5AD1A8", "#F2C14E", "#EF6F8E", "#B79CFF",
@@ -923,6 +941,26 @@
       }
       function yFor(frac) { return PAD.t + (1 - frac) * (H - PAD.t - PAD.b); }
 
+      // X coordinate for a calendar date (YYYY-MM-DD). Returns null if the date
+      // falls outside the loaded window. Interpolates between days when the exact
+      // day is absent so markers land precisely on the time axis.
+      function xForDate(target) {
+        const exact = days.findIndex((d) => d.date === target);
+        if (exact >= 0) return xFor(exact);
+        const t = Date.parse(target);
+        if (isNaN(t)) return null;
+        let lo = -1, hi = -1;
+        for (let i = 0; i < days.length; i++) {
+          const di = Date.parse(days[i].date);
+          if (di <= t) lo = i;
+          if (di >= t && hi === -1) hi = i;
+        }
+        if (lo === -1 || hi === -1 || lo === hi) return null;
+        const tlo = Date.parse(days[lo].date), thi = Date.parse(days[hi].date);
+        const frac = (t - tlo) / (thi - tlo);
+        return xFor(lo) + (xFor(hi) - xFor(lo)) * frac;
+      }
+
       // Peak stacked value across days, used as the top of the y-axis:
       //   abs => max block count;  pct => max stacked share of total in (0,1].
       // Muting clients lowers it, so the chart zooms to fill instead of leaving
@@ -1021,6 +1059,18 @@
         for (let k = 0; k < labelCount; k++) {
           const i = labelCount === 1 ? 0 : Math.round((k * (days.length - 1)) / (labelCount - 1));
           svg.appendChild(text(xFor(i), H - PAD.b + 17, days[i].date.slice(5), { "text-anchor": "middle", class: "axislabel" }));
+        }
+
+        // event markers (e.g. notable client releases) as dashed verticals
+        for (const ev of EVENTS) {
+          const ex = xForDate(ev.date);
+          if (ex == null) continue;
+          svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line" }));
+          // Keep the label inside the plot: anchor by which edge it sits near.
+          const nearLeft = ex < PAD.l + 60, nearRight = ex > W - PAD.r - 60;
+          const anchor = nearLeft ? "start" : nearRight ? "end" : "middle";
+          const lx = nearLeft ? ex + 4 : nearRight ? ex - 4 : ex;
+          svg.appendChild(text(lx, PAD.t + 9, ev.label, { "text-anchor": anchor, class: "event-label" }));
         }
 
         // crosshair + hover overlay
