@@ -310,15 +310,15 @@
     }
 
     .event-line {
-      stroke: var(--ink);
-      stroke-width: 1;
-      stroke-dasharray: 4 4;
-      opacity: 0.4;
+      stroke: var(--glow);
+      stroke-width: 1.25;
+      stroke-dasharray: 5 4;
+      opacity: 0.85;
     }
 
     .event-label {
-      fill: var(--muted);
-      font-size: 9.5px;
+      fill: var(--glow);
+      font-size: 10px;
       font-weight: 600;
     }
 
@@ -826,7 +826,7 @@
 
       // Notable releases annotated on the timeline as dashed vertical markers.
       const EVENTS = [
-        { date: "2026-05-22", label: "Prysm v7.1.4" },
+        { date: "2026-05-22", label: "Prysm v7.1.4 release - start client identification" },
       ];
 
       // Measured categorical palette — luminous on deep blue, none neon.
@@ -1067,10 +1067,11 @@
           const ex = xForDate(ev.date);
           if (ex == null) continue;
           svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line" }));
-          // Keep the label inside the plot: anchor by which edge it sits near.
-          const nearLeft = ex < PAD.l + 60, nearRight = ex > W - PAD.r - 60;
-          const anchor = nearLeft ? "start" : nearRight ? "end" : "middle";
-          const lx = nearLeft ? ex + 4 : nearRight ? ex - 4 : ex;
+          // Label sits just below the top edge; anchor it toward whichever side
+          // has more room so the (long) text never runs off the plot.
+          const nearRight = ex > (PAD.l + W - PAD.r) / 2;
+          const anchor = nearRight ? "end" : "start";
+          const lx = nearRight ? ex - 6 : ex + 6;
           svg.appendChild(text(lx, PAD.t + 9, ev.label, { "text-anchor": anchor, class: "event-label" }));
         }
 
