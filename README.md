@@ -6,6 +6,10 @@ diversity over time, measured by **block production**. It reads the
 codes that clients embed in beacon-block **graffiti** and aggregates them into
 one point per UTC day.
 
+<img width="1065" height="1323" alt="image" src="https://github.com/user-attachments/assets/6abf78ea-7268-4e5b-a119-3038bceebe0d" />
+<img width="1025" height="575" alt="image" src="https://github.com/user-attachments/assets/183dff17-29c1-4923-b2d3-18fea9bffaba" />
+
+
 The repo is two independent pieces, one per directory:
 
 | Directory   | What it is                                                                 |
