@@ -853,14 +853,15 @@
       // started emitting the identification graffiti, how it treats a custom
       // graffiti, and any flag to disable the client identification. Keyed by CL code.
       const CLIENT_NOTES = {
-        PM: "Before v7.1.3 included, Prysm does not add the client identification.",
-        LH: "Before v8.1.3 included, Lighthouse does not add the client identification by default if a custom graffiti is set.",
+        PM: "Before v7.1.4 excluded, Prysm does not add the client identification.",
+        LH: "Before v8.2.0 excluded, Lighthouse does not add the client identification by default if a custom graffiti is set.",
         LS: "Lodestar does not add the client identification if a custom graffiti is set.",
       };
 
       // Notable releases annotated on the timeline as dashed vertical markers.
       const EVENTS = [
-        { date: "2026-05-22", label: "Prysm V7.1.4 release - start client identification" },
+        { date: "2026-05-22", code: "PM", label: "Prysm V7.1.4" },
+        { date: "2026-06-22", code: "LH", label: "Lighthouse V8.2.0" },
       ];
 
       // Measured categorical palette — luminous on deep blue, none neon.
@@ -1097,13 +1098,23 @@
         for (const ev of EVENTS) {
           const ex = xForDate(ev.date);
           if (ex == null) continue;
-          svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line" }));
+          // Color the marker like its client when that client is in this layer;
+          // otherwise fall back to the default glow.
+          const evColor = (ev.code && chart.series.find((s) => s.code === ev.code)?.color) || null;
+          svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line", ...(evColor ? { style: "stroke:" + evColor } : {}) }));
           // Label sits just below the top edge; anchor it toward whichever side
           // has more room so the (long) text never runs off the plot.
           const nearRight = ex > (PAD.l + W - PAD.r) / 2;
           const anchor = nearRight ? "end" : "start";
           const lx = nearRight ? ex - 6 : ex + 6;
-          svg.appendChild(text(lx, PAD.t + 9, ev.label, { "text-anchor": anchor, class: "event-label" }));
+          const lines = Array.isArray(ev.label) ? ev.label : [ev.label];
+          const t = el("text", { x: r1(lx), y: r1(PAD.t + 9), "text-anchor": anchor, class: "event-label", ...(evColor ? { style: "fill:" + evColor } : {}) });
+          lines.forEach((line, li) => {
+            const span = el("tspan", { x: r1(lx), dy: li === 0 ? 0 : "1.2em" });
+            span.textContent = line;
+            t.appendChild(span);
+          });
+          svg.appendChild(t);
         }
 
         // crosshair + hover overlay
