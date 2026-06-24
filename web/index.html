@@ -1098,9 +1098,15 @@
         for (const ev of EVENTS) {
           const ex = xForDate(ev.date);
           if (ex == null) continue;
-          // Color the marker like its client when that client is in this layer;
-          // otherwise fall back to the default glow.
-          const evColor = (ev.code && chart.series.find((s) => s.code === ev.code)?.color) || null;
+          // Color the marker like its client. A client usually lives in only one
+          // layer (e.g. Lighthouse is CL-only), so when it is absent from this
+          // chart's series, fall back to the other layer's series so the marker
+          // keeps the same client color on both graphs. Default glow if neither.
+          const evColor = ev.code
+            ? (chart.series.find((s) => s.code === ev.code)?.color
+              || charts.map((c) => c.series.find((s) => s.code === ev.code)?.color).find(Boolean)
+              || null)
+            : null;
           svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line", ...(evColor ? { style: "stroke:" + evColor } : {}) }));
           // Label sits just below the top edge; anchor it toward whichever side
           // has more room so the (long) text never runs off the plot.
