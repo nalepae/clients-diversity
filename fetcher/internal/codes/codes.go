@@ -37,6 +37,7 @@ var CL = map[string]string{
 	"NB": "Nimbus",
 	"LS": "Lodestar",
 	"GR": "Grandine",
+	"CN": "Caplin",
 }
 
 // IsEL reports whether code is a known execution-layer client code.
