@@ -37,6 +37,7 @@ func TestParseText(t *testing.T) {
 		{"codes only besu/prysm alias", "BUPR", "BU", "PM"},
 		{"codes only with custom prefix", "𝕡𝟚𝕡․𝕠𝕣𝕘 BUPR", "BU", "PM"},
 		{"full geth/lighthouse", "GE9566LH176c", "GE", "LH"},
+		{"full erigon/caplin", "EGa53eCNa53e", "EG", "CN"},
 		{"no-space concatenated full", "12345678901234567890GEabcdPMe4f6", "GE", "PM"},
 		{"no-space concatenated codes only", "1234567890123456789012345678GEPM", "GE", "PM"},
 

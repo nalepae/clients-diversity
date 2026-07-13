@@ -41,7 +41,7 @@ registries in `fetcher/internal/codes`:
 - **EL:** `GE` Geth · `NM` Nethermind · `BU` Besu · `EG` Erigon · `RH` Reth ·
   `EJ` EthereumJS · `EX` ethrex · `TE` trin-execution
 - **CL:** `PM` Prysm · `LH` Lighthouse · `TK` Teku · `NB` Nimbus ·
-  `LS` Lodestar · `GR` Grandine
+  `LS` Lodestar · `GR` Grandine · `CN` Caplin
 
 Anything that doesn't match a valid pair is bucketed as `unknown` for both
 layers.
