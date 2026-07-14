@@ -64,6 +64,27 @@ func TestParseHex(t *testing.T) {
 	}
 }
 
+func TestParseCommits(t *testing.T) {
+	tests := []struct {
+		input                string
+		wantELCom, wantCLCom string
+	}{
+		{"GE117ePM5498", "117e", "5498"}, // full 4-hex commits
+		{"GEabPM54", "ab", "54"},         // 2-hex truncation
+		{"GEPM", "", ""},                 // codes only, commits dropped
+		{"Everstake / Pro", "", ""},      // unknown: no commit
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := ParseText(tt.input)
+			if got.ELCommit != tt.wantELCom || got.CLCommit != tt.wantCLCom {
+				t.Errorf("ParseText(%q) commits = {EL:%q CL:%q}, want {EL:%q CL:%q}",
+					tt.input, got.ELCommit, got.CLCommit, tt.wantELCom, tt.wantCLCom)
+			}
+		})
+	}
+}
+
 func TestDecodeHex(t *testing.T) {
 	if got := DecodeHex(toGraffitiHex("GE117ePM5498")); got != "GE117ePM5498" {
 		t.Errorf("DecodeHex round-trip = %q", got)

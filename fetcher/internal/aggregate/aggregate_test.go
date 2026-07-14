@@ -55,6 +55,61 @@ func TestTally(t *testing.T) {
 	}
 }
 
+func TestTallyReleases(t *testing.T) {
+	tally := NewTally()
+	// Same Prysm release, three commit-truncation tiers (4-hex, 2-hex, dropped),
+	// plus a distinct Geth build on the last one.
+	tally.Add(SlotResult{Found: true, Graffiti: hexOf("GE117ePM5498")}) // GE 117e, PM 5498
+	tally.Add(SlotResult{Found: true, Graffiti: hexOf("GEabPM54")})     // GE ab,   PM 54
+	tally.Add(SlotResult{Found: true, Graffiti: hexOf("GEPM")})         // GE "",   PM ""
+	tally.Add(SlotResult{Found: true, Graffiti: hexOf("Everstake")})    // unknown
+
+	rec := tally.Record(time.Now())
+
+	wantCL := map[string]int{"5498": 1, "54": 1, "": 1}
+	if got := rec.CLReleases["PM"]; !mapsEqual(got, wantCL) {
+		t.Errorf("CLReleases[PM] = %v, want %v", got, wantCL)
+	}
+
+	wantEL := map[string]int{"117e": 1, "ab": 1, "": 1}
+	if got := rec.ELReleases["GE"]; !mapsEqual(got, wantEL) {
+		t.Errorf("ELReleases[GE] = %v, want %v", got, wantEL)
+	}
+
+	// Invariant: a client's release counts sum to its total.
+	if sum := sumValues(rec.CLReleases["PM"]); sum != rec.CL["PM"] {
+		t.Errorf("CLReleases[PM] sums to %d, want CL[PM]=%d", sum, rec.CL["PM"])
+	}
+	if sum := sumValues(rec.ELReleases["GE"]); sum != rec.EL["GE"] {
+		t.Errorf("ELReleases[GE] sums to %d, want EL[GE]=%d", sum, rec.EL["GE"])
+	}
+
+	// Unknown blocks carry no commit, so never appear in the release maps.
+	if _, ok := rec.CLReleases[codes.Unknown]; ok {
+		t.Errorf("CLReleases must not contain the Unknown bucket")
+	}
+}
+
+func mapsEqual(a, b map[string]int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func sumValues(m map[string]int) int {
+	sum := 0
+	for _, v := range m {
+		sum += v
+	}
+	return sum
+}
+
 // hexOf packs an ASCII string into a 32-byte 0x-prefixed hex graffiti value.
 func hexOf(s string) string {
 	var b [32]byte

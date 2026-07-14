@@ -26,11 +26,13 @@ type Meta struct {
 
 // DayRecord holds aggregated per-day counts for one UTC date.
 type DayRecord struct {
-	Date             string             `json:"date"` // YYYY-MM-DD (UTC)
-	TotalBlocks      int                `json:"totalBlocks"`
-	IdentifiedBlocks int                `json:"identifiedBlocks"`
-	CL               map[codes.Code]int `json:"cl"`
-	EL               map[codes.Code]int `json:"el"`
+	Date             string                        `json:"date"` // YYYY-MM-DD (UTC)
+	TotalBlocks      int                           `json:"totalBlocks"`
+	IdentifiedBlocks int                           `json:"identifiedBlocks"`
+	CL               map[codes.Code]int            `json:"cl"`
+	EL               map[codes.Code]int            `json:"el"`
+	CLReleases       map[codes.Code]map[string]int `json:"clReleases"`
+	ELReleases       map[codes.Code]map[string]int `json:"elReleases"`
 }
 
 // DataFile is the root JSON document.

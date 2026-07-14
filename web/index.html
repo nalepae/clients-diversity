@@ -240,6 +240,30 @@
       overflow: hidden;
     }
 
+    /* section divider between the general charts and the per-client charts */
+    .section-sep {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 14px 0 -2px;
+    }
+
+    .section-sep::before,
+    .section-sep::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--hair);
+    }
+
+    .section-sep span {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
     .panel-head {
       display: flex;
       align-items: baseline;
@@ -321,6 +345,24 @@
       fill: var(--glow);
       font-size: 10px;
       font-weight: 600;
+    }
+
+    /* per-release markers on build charts: many per chart, so keep them quiet */
+    .event-line.release {
+      stroke-width: 1;
+      opacity: 0.45;
+    }
+
+    .event-label.release {
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 1;
+      /* dark contour behind the coloured text so it reads on a same-coloured band */
+      paint-order: stroke;
+      stroke: #0A0E17;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
     }
 
     .band {
@@ -460,6 +502,16 @@
     .seg button:focus-visible {
       outline: 2px solid var(--glow);
       outline-offset: 2px;
+    }
+
+    /* Build charts read as a family under their layer chart: a hairline rule and
+       slightly recessed panel set them apart from the two headline charts. */
+    .panel.build {
+      background: linear-gradient(180deg, var(--panel-2) 0%, var(--bg-2) 100%);
+    }
+
+    .panel.build .panel-head .tag {
+      background: var(--faint);
     }
 
     /* ---------- method panel ---------- */
@@ -833,7 +885,7 @@
         <button data-mode="pct" class="active">Share %</button>
         <button data-mode="abs">Blocks</button>
       </div>
-      <span class="hint">Click a client to mute it</span>
+      <span class="hint">Click a series to mute it</span>
     </div>
 
     <main id="charts"></main>
@@ -851,7 +903,7 @@
 
       const CL_NAMES = {
         CN: "Caplin",
-        GR: "Grandine",‡
+        GR: "Grandine",
         LH: "Lighthouse",
         LS: "Lodestar",
         NB: "Nimbus",
@@ -869,6 +921,93 @@
         RH: "Reth",
         TE: "Trin-execution",
       };
+
+      const RELEASES = {
+        // Execution layer
+        BU: {
+          "31eb": "26.1.0", "e5e9": "26.2.0", "d203": "26.4.0", "9b67": "26.5.0",
+          "de8d": "26.6.0", "983c": "26.6.1", "f036": "26.7.0", "6d10": "25.11.0", "05b6": "25.12.0",
+        },
+        EG: {
+          "bc54": "v3.2.2", "a0c5": "v3.3.0", "9a89": "v3.3.7", "e071": "v3.3.8", "8d7d": "v3.3.9",
+          "e7de": "v3.3.10", "ab50": "v3.4.0", "6fdf": "v3.4.1", "c045": "v3.4.3", "5da2": "v3.4.4",
+          "7e8c": "v3.5.0",
+        },
+        EJ: {
+          "696b": "0.6.6", "47c2": "0.7.0", "49c2": "0.7.1", "6b23": "0.8.0", "c47d": "0.8.1",
+          "c6d8": "0.9.0", "11f3": "0.10.0", "48e6": "0.10.1", "27e2": "0.10.2", "b1f8": "0.10.4", "9e46": "0.10.5",
+        },
+        EX: {
+          "6e62": "v13.0.0", "52ea": "v14.0.0", "f902": "v15.0.0", "b4d7": "v16.0.0", "d749": "v17.0.0",
+          "886d": "v18.0.0", "68b2": "v19.0.0", "7d23": "v20.0.0", "7729": "v21.0.0",
+        },
+        GE: {
+          "386c": "v1.16.6", "b9f3": "v1.16.7", "abeb": "v1.16.8", "9566": "v1.16.9",
+          "0cf3": "v1.17.0", "1678": "v1.17.1", "be4d": "v1.17.2", "117e": "v1.17.3", "36a7": "v1.17.4",
+        },
+        NM: {
+          "faa9": "1.35.2", "d9fe": "1.35.3", "5d4d": "1.35.4", "9205": "1.35.7", "c066": "1.35.8",
+          "31cb": "1.36.0", "80ec": "1.36.1", "f550": "1.36.2", "7c00": "1.37.0", "706a": "1.37.1",
+          "8e21": "1.37.2", "c07a": "1.38.0", "9c36": "1.38.1", "14ac": "1.39.0",
+        },
+        RH: {
+          "7435": "v1.9.2", "27a8": "v1.9.3", "ce2b": "v1.9.4", "b25f": "v1.10.0", "8e3b": "v1.10.2",
+          "564f": "v1.11.0", "bef3": "v1.11.1", "793a": "v1.11.2", "d632": "v1.11.3",
+          "eb4c": "v2.0.0", "d58c": "v2.1.0", "8850": "v2.2.0", "9384": "v2.3.0",
+        },
+        TE: {
+          "f58a": "v0.2.0", "eb63": "v0.2.1", "995d": "v0.2.2", "fadd": "v0.2.3", "cf0b": "v0.2.4",
+          "a67d": "v0.2.5", "ef05": "v0.2.6", "d8e6": "v0.2.7", "bd3e": "v0.3.0", "5c85": "v0.3.1",
+          "7051": "v0.3.2", "4add": "v0.3.3",
+        },
+
+        // Consensus layer (CN is aliased below)
+        GR: { "cc79": "2.0.2", "4f2d": "2.0.3", "566c": "2.0.4", "70c8": "2.0.5" },
+        LH: {
+          "e3ee": "v8.0.0", "ced4": "v8.0.1", "edba": "v8.1.0", "95f1": "v8.1.1",
+          "3dea": "v8.1.2", "176c": "v8.1.3", "120c": "v8.2.0",
+        },
+        LS: {
+          "c5e9": "v1.36.0", "eaf5": "v1.37.0", "dbd9": "v1.38.0", "bc42": "v1.39.1",
+          "d61d": "v1.40.0-rc.1", "af86": "v1.40.0-rc.2", "66af": "v1.40.0", "13e8": "v1.41.0",
+          "fc67": "v1.41.1", "443e": "v1.42.0", "5cb8": "v1.43.0", "1da2": "v1.44.0-rc.1", "e3d7": "v1.44.0",
+        },
+        NB: {
+          "d2f2": "v25.5.0", "cb2d": "v25.6.0", "94fb": "v25.7.0", "92de": "v25.7.1", "660e": "v25.9.0",
+          "27ef": "v25.9.1", "9839": "v25.9.2", "f491": "v25.10.0", "02ea": "v25.11.0", "2053": "v25.11.1",
+          "ce46": "v25.12.0", "ad14": "v26.1.0", "fa7a": "v26.2.0", "b3a3": "v26.2.1", "6aa9": "v26.3.0",
+          "102b": "v26.3.1", "6fb0": "v26.5.0", "1cc8": "v26.6.0", "2361": "v26.6.2", "4110": "v26.7.0",
+        },
+        PM: {
+          "7794": "v7.0.0", "9dc2": "v7.0.1", "7a70": "v7.1.0", "8191": "v7.1.1", "7950": "v7.1.2",
+          "b531": "v7.1.3", "1756": "v7.1.4", "5498": "v7.1.5", "1fc4": "v7.1.6", "8db5": "v7.1.7",
+        },
+        TK: {
+          "372d": "25.9.1", "7569": "25.9.2", "aa26": "25.10.0", "7669": "25.11.0",
+          "1f73": "25.11.1", "f0d8": "25.12.0", "137d": "26.2.0", "db53": "26.3.0",
+          "c5ad": "26.4.0", "44ba": "26.6.0", "6c8b": "26.6.1", "3255": "26.7.0", "924b": "26.7.1",
+        },
+      };
+
+      // Caplin is Erigon's embedded consensus layer (same binary, same build commit)
+      RELEASES.CN = RELEASES.EG;
+
+      // Release date (UTC) per version, from each client's GitHub releases. Drawn
+      // as a dashed vertical marker on that client's build chart. Snapshot as of
+      // 2026-07-15; refresh from /repos/<org>/<repo>/releases (published_at).
+      const RELEASE_DATES = {
+        PM: { "v7.1.3": "2026-03-18", "v7.1.4": "2026-05-22", "v7.1.5": "2026-06-17", "v7.1.6": "2026-07-01", "v7.1.7": "2026-07-13" },
+        LH: { "v8.1.1": "2026-02-27", "v8.1.2": "2026-03-09", "v8.1.3": "2026-03-26", "v8.2.0": "2026-06-22" },
+        TK: { "26.3.0": "2026-03-05", "26.4.0": "2026-03-31", "26.6.0": "2026-06-15", "26.6.1": "2026-06-16", "26.7.0": "2026-07-01", "26.7.1": "2026-07-11" },
+        LS: { "v1.41.0": "2026-03-19", "v1.41.1": "2026-04-01", "v1.42.0": "2026-04-13", "v1.43.0": "2026-05-20", "v1.44.0-rc.1": "2026-06-17", "v1.44.0": "2026-07-01" },
+        GR: { "2.0.2": "2026-02-28", "2.0.3": "2026-03-10", "2.0.4": "2026-03-31", "2.0.5": "2026-06-29" },
+        GE: { "v1.16.9": "2026-02-17", "v1.17.0": "2026-02-17", "v1.17.1": "2026-03-03", "v1.17.2": "2026-03-30", "v1.17.3": "2026-05-11", "v1.17.4": "2026-06-22" },
+        NM: { "1.36.1": "2026-03-06", "1.36.2": "2026-03-25", "1.37.0": "2026-04-24", "1.37.1": "2026-04-28", "1.37.2": "2026-05-05", "1.38.0": "2026-06-02", "1.38.1": "2026-06-15", "1.39.0": "2026-07-08" },
+        BU: { "26.2.0": "2026-03-05", "26.4.0": "2026-04-22", "26.5.0": "2026-05-12", "26.6.0": "2026-06-04", "26.6.1": "2026-06-17", "26.7.0": "2026-07-13" },
+        RH: { "v1.11.0": "2026-02-16", "v1.11.1": "2026-02-23", "v1.11.2": "2026-03-10", "v1.11.3": "2026-03-12", "v2.0.0": "2026-04-08", "v2.1.0": "2026-04-20", "v2.2.0": "2026-04-30", "v2.3.0": "2026-06-10" },
+        EG: { "v3.3.8": "2026-02-20", "v3.3.9": "2026-03-09", "v3.3.10": "2026-03-27", "v3.4.0": "2026-04-28", "v3.4.1": "2026-05-11", "v3.4.3": "2026-06-02", "v3.4.4": "2026-06-18", "v3.5.0": "2026-06-26" },
+      };
+      RELEASE_DATES.CN = RELEASE_DATES.EG;
 
       // Per-consensus-client hover notes shown on legend rows: when each client
       // started emitting the identification graffiti, how it treats a custom
@@ -908,8 +1047,9 @@
       }
 
       let data, mode = "pct";
-      // "unknown" starts muted so the chart opens on the identified clients.
-      const hidden = { cl: new Set(["unknown"]), el: new Set(["unknown"]) };
+      // Per-chart set of muted series keys, keyed by chart id. Filled once the
+      // charts are built (layer charts start with "unknown" muted).
+      const hidden = {};
 
       try {
         data = await loadData();
@@ -927,15 +1067,16 @@
       }
 
       // ---------- aggregation helpers ----------
-      function dayValue(d, layer, code) { return (d[layer] && d[layer][code]) || 0; }
-      function dayTotal(d, layer) {
-        const b = d[layer] || {}; let s = 0; for (const k in b) s += b[k]; return s;
-      }
+      // A chart exposes buckets(d): a {categoryKey -> count} map for one day. For a
+      // layer chart the categories are client codes; for a per-client build chart
+      // they are commit hashes (with the long tail folded into "__other__").
+      function bucketVal(chart, d, key) { const b = chart.buckets(d); return (b && b[key]) || 0; }
+      function chartTotal(chart, d) { const b = chart.buckets(d); let s = 0; for (const k in b) s += b[k]; return s; }
 
-      // Series ordered by grand total DESCENDING (incl. unknown) so the largest band
-      // sits on the baseline. Colors are assigned to known clients by rank; unknown
-      // is always the recessive slate regardless of where it ranks.
-      function seriesFor(layer) {
+      // Client series for a layer, ordered by grand total DESCENDING (incl. unknown)
+      // so the largest band sits on the baseline. Colors are assigned to known
+      // clients by rank; unknown is always the recessive slate and starts muted.
+      function layerClientSeries(layer) {
         const names = layer === "cl" ? CL_NAMES : EL_NAMES;
         const last = days[days.length - 1][layer] || {};
         const totals = {}; let unknownTotal = 0;
@@ -961,13 +1102,156 @@
           name: x.code === "unknown" ? "Unknown" : (names[x.code] || x.code),
           color: x.code === "unknown" ? UNKNOWN_COLOR : color[x.code],
           total: x.total,
+          recessive: x.code === "unknown",
+          initialHidden: x.code === "unknown",
         }));
       }
 
-      const charts = [
-        { layer: "cl", title: "Consensus layer", tag: "CL" },
-        { layer: "el", title: "Execution layer", tag: "EL" },
-      ].map((c) => ({ ...c, series: seriesFor(c.layer) }));
+      function makeLayerChart(layer, title, tag) {
+        return {
+          id: layer, kind: "layer", layer, title, tag,
+          metaPct: "share of all blocks",
+          series: layerClientSeries(layer),
+          buckets: (d) => d[layer] || {},
+        };
+      }
+
+      // Compare two release-version strings, ascending (older first). Tolerates a
+      // leading "v" and -rc/-beta prerelease suffixes; a release sorts after its
+      // own prereleases.
+      function cmpVersion(a, b) {
+        const parse = (v) => {
+          const [core, pre = ""] = String(v).replace(/^v/i, "").split("-");
+          return { nums: core.split(".").map((n) => parseInt(n, 10) || 0), pre };
+        };
+        const pa = parse(a), pb = parse(b);
+        const len = Math.max(pa.nums.length, pb.nums.length);
+        for (let i = 0; i < len; i++) {
+          const d = (pa.nums[i] || 0) - (pb.nums[i] || 0);
+          if (d) return d;
+        }
+        if (pa.pre === pb.pre) return 0;
+        if (!pa.pre) return 1;
+        if (!pb.pre) return -1;
+        return pa.pre < pb.pre ? -1 : 1;
+      }
+
+      // Order build-chart bands: the two recessive buckets ("no build id", then
+      // "other builds") pinned first, then known releases by version.
+      function cmpBuildSeries(a, b) {
+        const rank = (s) => s.code === "" ? 0 : s.code === "__other__" ? 1 : 2;
+        const r = rank(a) - rank(b);
+        if (r) return r;
+        if (rank(a) === 2) return cmpVersion(a.version, b.version);
+        return 0;
+      }
+
+      // Build (release) series for ONE client: one band per release VERSION,
+      // ordered by version. A graffiti commit resolves to a version by exact match
+      // or an unambiguous prefix relationship, so a client's truncated commit
+      // (e.g. Prysm "1f") merges into its full release ("1fc4" = v7.1.6). Commits
+      // that resolve to no single release fold into a recessive "other builds"
+      // band and commit-less blocks into "no build id" — both hidden by default.
+      // Returns null if never identified.
+      function makeBuildChart(layer, code, clientName, tag) {
+        const releaseCommits = RELEASES[code] || {}; // full 4-hex commit -> version
+        const knownCommits = Object.keys(releaseCommits);
+
+        // Resolve a graffiti commit to a known version. Exact match wins; else the
+        // commit and a release commit must be prefixes of one another (truncation)
+        // AND that release must be the only such match — otherwise it is ambiguous.
+        function resolveVersion(commit) {
+          if (!commit) return null;
+          if (releaseCommits[commit]) return releaseCommits[commit];
+          const m = knownCommits.filter((k) => k.startsWith(commit) || commit.startsWith(k));
+          return m.length === 1 ? releaseCommits[m[0]] : null;
+        }
+
+        // Tally the window into version buckets, "no build id" and "other builds".
+        const totals = {}; // version -> block count
+        const otherCommits = new Set();
+        let noBuildId = 0, other = 0;
+        for (const d of days) {
+          const rel = (d[layer + "Releases"] || {})[code] || {};
+          for (const c in rel) {
+            const v = resolveVersion(c);
+            if (v) totals[v] = (totals[v] || 0) + rel[c];
+            else if (c === "") noBuildId += rel[c];
+            else { other += rel[c]; otherCommits.add(c); }
+          }
+        }
+        const shown = Object.keys(totals);
+        if (!shown.length && !noBuildId && !other) return null;
+
+        // Representative full commit per version, for the "#1fc4" legend hint.
+        const commitOf = {};
+        for (const k of knownCommits) commitOf[releaseCommits[k]] = k;
+
+        // Assign palette colors biggest-first so dominant releases read clearest.
+        shown.sort((a, b) => totals[b] - totals[a]);
+        let ci = 0;
+        const series = shown.map((v) => ({
+          code: v,
+          commit: commitOf[v],
+          version: v,
+          name: v,
+          color: PALETTE[(ci++) % PALETTE.length],
+          total: totals[v],
+          recessive: false,
+        }));
+        if (noBuildId > 0) {
+          series.push({
+            code: "", commit: "", version: null, name: "no build id",
+            color: UNKNOWN_COLOR, total: noBuildId, recessive: true, initialHidden: true,
+          });
+        }
+        if (other > 0) {
+          series.push({
+            code: "__other__", name: "other builds (" + otherCommits.size + ")",
+            color: UNKNOWN_COLOR, total: other, recessive: true, initialHidden: true,
+          });
+        }
+        series.sort(cmpBuildSeries);
+
+        return {
+          id: layer + ":" + code, kind: "build", layer, code, tag,
+          title: clientName,
+          metaPct: "share of " + clientName,
+          series,
+          buckets: (d) => {
+            const rel = (d[layer + "Releases"] || {})[code] || {};
+            const out = {};
+            for (const c in rel) {
+              const v = resolveVersion(c);
+              const key = v ? v : (c === "" ? "" : "__other__");
+              out[key] = (out[key] || 0) + rel[c];
+            }
+            return out;
+          },
+        };
+      }
+
+      // Two layer charts, then one build chart per identified client — execution
+      // layer first, then consensus layer, each sorted alphabetically by name.
+      const layerCharts = [
+        makeLayerChart("cl", "Consensus layer", "CL"),
+        makeLayerChart("el", "Execution layer", "EL"),
+      ];
+      const buildCharts = [];
+      for (const layer of ["el", "cl"]) {
+        const lc = layerCharts.find((c) => c.layer === layer);
+        const clients = lc.series
+          .filter((s) => !s.recessive) // skip unknown
+          .sort((a, b) => a.name.localeCompare(b.name));
+        for (const s of clients) {
+          const bc = makeBuildChart(lc.layer, s.code, s.name, lc.tag);
+          if (bc) buildCharts.push(bc);
+        }
+      }
+      const charts = [...layerCharts, ...buildCharts];
+      for (const c of charts) {
+        hidden[c.id] = new Set(c.series.filter((s) => s.initialHidden).map((s) => s.code));
+      }
 
       // ---------- masthead readout ----------
       function buildReadout() {
@@ -1023,19 +1307,19 @@
         let scale = mode === "abs" ? 1 : 0;
         for (const d of days) {
           let stacked = 0;
-          for (const s of visible) stacked += dayValue(d, chart.layer, s.code);
-          const v = mode === "abs" ? stacked : stacked / Math.max(dayTotal(d, chart.layer), 1);
+          for (const s of visible) stacked += bucketVal(chart, d, s.code);
+          const v = mode === "abs" ? stacked : stacked / Math.max(chartTotal(chart, d), 1);
           if (v > scale) scale = v;
         }
         return scale > 0 ? scale : 1;
       }
 
-      // Plot height fraction (0..1) for one client's value on a given day,
-      // relative to the current vertical scale.
+      // Plot height fraction (0..1) for one band's value on a given day, relative
+      // to the current vertical scale.
       function valFrac(chart, d, code, scale) {
         return mode === "abs"
-          ? dayValue(d, chart.layer, code) / scale
-          : (dayValue(d, chart.layer, code) / Math.max(dayTotal(d, chart.layer), 1)) / scale;
+          ? bucketVal(chart, d, code) / scale
+          : (bucketVal(chart, d, code) / Math.max(chartTotal(chart, d), 1)) / scale;
       }
 
       // ---------- render ----------
@@ -1044,22 +1328,36 @@
 
       function render() {
         root.innerHTML = "";
-        for (const chart of charts) root.appendChild(renderPanel(chart));
+        let lastBuildLayer = null;
+        for (const chart of charts) {
+          // A labeled divider starts each per-client build group: before the EL
+          // group (also separating it from the general charts) and again before
+          // the CL group.
+          if (chart.kind === "build" && chart.layer !== lastBuildLayer) {
+            const label = (chart.layer === "el" ? "Execution" : "Consensus") + " layer builds";
+            const sep = document.createElement("div");
+            sep.className = "section-sep";
+            sep.innerHTML = "<span>" + label + "</span>";
+            root.appendChild(sep);
+            lastBuildLayer = chart.layer;
+          }
+          root.appendChild(renderPanel(chart));
+        }
       }
 
       function renderPanel(chart) {
         const panel = document.createElement("section");
-        panel.className = "panel";
+        panel.className = "panel" + (chart.kind === "build" ? " build" : "");
 
         const head = document.createElement("div");
         head.className = "panel-head";
         head.innerHTML =
           '<span class="tag">' + chart.tag + '</span>' +
           '<h2>' + esc(chart.title) + '</h2>' +
-          '<span class="meta">' + (mode === "pct" ? "share of all blocks" : "blocks / day") + '</span>';
+          '<span class="meta">' + (mode === "pct" ? chart.metaPct : "blocks / day") + '</span>';
         panel.appendChild(head);
 
-        const visible = chart.series.filter((s) => !hidden[chart.layer].has(s.code));
+        const visible = chart.series.filter((s) => !hidden[chart.id].has(s.code));
 
         const scale = vScale(chart, visible);
         const topPct = scale * 100;                  // pct mode: % at the top of the axis
@@ -1069,7 +1367,7 @@
         scope.className = "scope";
         const svg = el("svg", {
           viewBox: "0 0 " + W + " " + H, class: "chart", preserveAspectRatio: "none", role: "img",
-          "aria-label": chart.title + " client distribution over time"
+          "aria-label": chart.title + " distribution over time"
         });
 
         // grid + y labels
@@ -1082,11 +1380,14 @@
           svg.appendChild(text(PAD.l - 8, y + 3.5, label, { "text-anchor": "end", class: "axislabel y" }));
         }
 
-        // stacked areas (index 0 = largest = baseline)
+        // Stacked areas, drawn so the legend's BOTTOM entry sits on the baseline.
+        // Layer charts keep series order (largest first = baseline); build charts
+        // list versions top-first in the legend, so reverse for the stack.
+        const stackOrder = chart.kind === "build" ? [...visible].reverse() : visible;
         const areas = el("g", { class: "areas reveal" });
         const pathByCode = {};
         const cumBelow = days.map(() => 0);
-        for (const s of visible) {
+        for (const s of stackOrder) {
           const topPts = [], botPts = [];
           days.forEach((d, i) => {
             const v = valFrac(chart, d, s.code, scale);
@@ -1100,8 +1401,8 @@
             botPts.reverse().map((p) => "L" + r1(p[0]) + " " + r1(p[1])).join(" ") + " Z";
           const node = el("path", {
             d: path, class: "band", fill: s.color,
-            "fill-opacity": s.code === "unknown" ? 0.5 : 0.88,
-            stroke: s.color, "stroke-opacity": s.code === "unknown" ? 0.5 : 1
+            "fill-opacity": s.recessive ? 0.5 : 0.88,
+            stroke: s.color, "stroke-opacity": s.recessive ? 0.5 : 1
           });
           pathByCode[s.code] = node;
           areas.appendChild(node);
@@ -1115,33 +1416,51 @@
           svg.appendChild(text(xFor(i), H - PAD.b + 17, days[i].date.slice(5), { "text-anchor": "middle", class: "axislabel" }));
         }
 
-        // event markers (e.g. notable client releases) as dashed verticals
-        for (const ev of EVENTS) {
-          const ex = xForDate(ev.date);
-          if (ex == null) continue;
-          // Color the marker like its client. A client usually lives in only one
-          // layer (e.g. Lighthouse is CL-only), so when it is absent from this
-          // chart's series, fall back to the other layer's series so the marker
-          // keeps the same client color on both graphs. Default glow if neither.
-          const evColor = ev.code
-            ? (chart.series.find((s) => s.code === ev.code)?.color
-              || charts.map((c) => c.series.find((s) => s.code === ev.code)?.color).find(Boolean)
-              || null)
-            : null;
-          svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line", ...(evColor ? { style: "stroke:" + evColor } : {}) }));
-          // Label sits just below the top edge; anchor it toward whichever side
-          // has more room so the (long) text never runs off the plot.
-          const nearRight = ex > (PAD.l + W - PAD.r) / 2;
-          const anchor = nearRight ? "end" : "start";
-          const lx = nearRight ? ex - 6 : ex + 6;
-          const lines = Array.isArray(ev.label) ? ev.label : [ev.label];
-          const t = el("text", { x: r1(lx), y: r1(PAD.t + 9), "text-anchor": anchor, class: "event-label", ...(evColor ? { style: "fill:" + evColor } : {}) });
-          lines.forEach((line, li) => {
-            const span = el("tspan", { x: r1(lx), dy: li === 0 ? 0 : "1.2em" });
-            span.textContent = line;
-            t.appendChild(span);
-          });
-          svg.appendChild(t);
+        // Dashed vertical release markers.
+        if (chart.kind === "layer") {
+          // A few notable client releases (EVENTS), horizontal labels.
+          for (const ev of EVENTS) {
+            const ex = xForDate(ev.date);
+            if (ex == null) continue;
+            // Color the marker like its client. A client usually lives in only one
+            // layer (e.g. Lighthouse is CL-only), so when it is absent from this
+            // chart's series, fall back to the other layer's series so the marker
+            // keeps the same client color on both graphs. Default glow if neither.
+            const evColor = ev.code
+              ? (chart.series.find((s) => s.code === ev.code)?.color
+                || charts.map((c) => c.series.find((s) => s.code === ev.code)?.color).find(Boolean)
+                || null)
+              : null;
+            svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line", ...(evColor ? { style: "stroke:" + evColor } : {}) }));
+            const nearRight = ex > (PAD.l + W - PAD.r) / 2;
+            const anchor = nearRight ? "end" : "start";
+            const lx = nearRight ? ex - 6 : ex + 6;
+            const lines = Array.isArray(ev.label) ? ev.label : [ev.label];
+            const t = el("text", { x: r1(lx), y: r1(PAD.t + 9), "text-anchor": anchor, class: "event-label", ...(evColor ? { style: "fill:" + evColor } : {}) });
+            lines.forEach((line, li) => {
+              const span = el("tspan", { x: r1(lx), dy: li === 0 ? 0 : "1.2em" });
+              span.textContent = line;
+              t.appendChild(span);
+            });
+            svg.appendChild(t);
+          }
+        } else {
+          // Every in-window release of this client, with a vertical version label
+          // coloured like the release's band (faint if that release had no blocks).
+          const dates = RELEASE_DATES[chart.code] || {};
+          for (const v of Object.keys(dates)) {
+            const ex = xForDate(dates[v]);
+            if (ex == null) continue;
+            const col = chart.series.find((s) => s.version === v)?.color || "var(--faint)";
+            svg.appendChild(el("line", { x1: ex, y1: PAD.t, x2: ex, y2: H - PAD.b, class: "event-line release", style: "stroke:" + col }));
+            // Vertical label to the LEFT of the line, reading top-to-bottom. Under
+            // rotate(90) glyphs extend right of the baseline, so drop the baseline
+            // ~14px left of the line for the column to clear it.
+            const lx = r1(ex - 14), ly = r1(PAD.t + 4);
+            const t = el("text", { x: lx, y: ly, "text-anchor": "start", class: "event-label release", transform: "rotate(90 " + lx + " " + ly + ")", style: "fill:" + col });
+            t.textContent = v;
+            svg.appendChild(t);
+          }
         }
 
         // crosshair + hover overlay
@@ -1180,16 +1499,20 @@
         marker.setAttribute("cy", yFor(stackedFrac));
         marker.setAttribute("opacity", 1);
 
-        const total = dayTotal(d, chart.layer);
+        const total = chartTotal(chart, d);
+        const meta = chart.kind === "layer"
+          ? fmtFull(d.totalBlocks) + ' blocks · ' + ((d.identifiedBlocks / d.totalBlocks) * 100).toFixed(1) + '% identified'
+          : fmtFull(total) + ' ' + chart.tag + ' blocks';
         let html = '<div class="tdate">' + d.date + '</div>' +
-          '<div class="tmeta">' + fmtFull(d.totalBlocks) + ' blocks · ' +
-          ((d.identifiedBlocks / d.totalBlocks) * 100).toFixed(1) + '% identified</div>';
-        // Rows sorted by popularity on the hovered day, ascending to match the
-        // legend and the bottom-to-top stack: least popular first.
-        const rows = [...visible].sort((a, b) =>
-          dayValue(d, chart.layer, a.code) - dayValue(d, chart.layer, b.code));
+          '<div class="tmeta">' + meta + '</div>';
+        // Build charts: keep the legend/stack order (visible already follows it).
+        // Layer charts: sort by popularity on the hovered day (least popular first)
+        // to match their bottom-to-top stack.
+        const rows = chart.kind === "build"
+          ? visible
+          : [...visible].sort((a, b) => bucketVal(chart, d, a.code) - bucketVal(chart, d, b.code));
         for (const s of rows) {
-          const v = dayValue(d, chart.layer, s.code);
+          const v = bucketVal(chart, d, s.code);
           if (v === 0) continue;
           const pct = total ? ((v / total) * 100).toFixed(1) + "%" : "0%";
           const val = mode === "pct" ? pct : fmtFull(v) + " · " + pct;
@@ -1207,19 +1530,23 @@
 
       function renderLegend(chart, pathByCode) {
         const last = days[days.length - 1];
-        const total = dayTotal(last, chart.layer) || 1;
+        const total = chartTotal(chart, last) || 1;
         const wrap = document.createElement("div");
         wrap.className = "legend";
 
-        // Sorted by popularity on the latest day: least popular first, most popular
-        // (usually unknown) last — matching the displayed shares.
-        const ordered = [...chart.series].sort((a, b) =>
-          dayValue(last, chart.layer, a.code) - dayValue(last, chart.layer, b.code));
+        // Build charts follow their own order ("no build id" / "other builds"
+        // first, then releases ascending by version). Layer charts sort by
+        // popularity on the latest day (least popular first) to match the stack.
+        const ordered = chart.kind === "build"
+          ? chart.series
+          : [...chart.series].sort((a, b) => bucketVal(chart, last, a.code) - bucketVal(chart, last, b.code));
         for (const s of ordered) {
-          const v = dayValue(last, chart.layer, s.code);
+          const v = bucketVal(chart, last, s.code);
           const share = (v / total) * 100;
-          const isOff = hidden[chart.layer].has(s.code);
-          const flagged = s.code !== "unknown" && share > DIVERSITY_LIMIT;
+          const isOff = hidden[chart.id].has(s.code);
+          // Diversity alarm only makes sense for a client's share of a layer.
+          const flagged = chart.kind === "layer" && !s.recessive && share > DIVERSITY_LIMIT;
+          const note = chart.kind === "layer" ? CLIENT_NOTES[s.code] : null;
 
           const row = document.createElement("button");
           row.type = "button";
@@ -1228,15 +1555,16 @@
           row.innerHTML =
             '<span class="swatch" style="background:' + s.color + '"></span>' +
             '<span class="lname">' + esc(s.name) +
-            (s.code === "unknown" ? ' <span class="sub">no graffiti ID</span>' : '') +
-            (CLIENT_NOTES[s.code] ? ' <span class="info" role="img" aria-label="' + esc(CLIENT_NOTES[s.code]) + '">i</span>' : '') +
+            (chart.kind === "layer" && s.code === "unknown" ? ' <span class="sub">no graffiti ID</span>' : '') +
+            (chart.kind === "build" && s.version ? ' <span class="sub">#' + esc(s.commit) + '</span>' : '') +
+            (note ? ' <span class="info" role="img" aria-label="' + esc(note) + '">i</span>' : '') +
             (flagged ? ' <span class="alarm">&gt;⅓</span>' : '') + '</span>' +
             '<span class="lpct">' + share.toFixed(1) + '%</span>' +
             '<span class="lbar"><i style="width:' + Math.min(100, share).toFixed(1) +
             '%;background:' + s.color + '"></i></span>';
 
           row.addEventListener("click", () => {
-            const set = hidden[chart.layer];
+            const set = hidden[chart.id];
             if (set.has(s.code)) set.delete(s.code); else set.add(s.code);
             render();
           });
@@ -1255,7 +1583,7 @@
             info.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); });
             info.addEventListener("mouseenter", () => {
               tip.innerHTML = '<div class="tdate">' + esc(s.name) + '</div>' +
-                '<div class="tnote">' + esc(CLIENT_NOTES[s.code]) + '</div>';
+                '<div class="tnote">' + esc(note) + '</div>';
               tip.style.display = "block";
               const r = info.getBoundingClientRect();
               const tw = tip.offsetWidth, th = tip.offsetHeight;

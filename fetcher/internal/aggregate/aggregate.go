@@ -86,19 +86,28 @@ type Tally struct {
 	identified int
 	cl         map[codes.Code]int
 	el         map[codes.Code]int
+	clReleases map[codes.Code]map[string]int
+	elReleases map[codes.Code]map[string]int
 }
 
-// NewTally returns an initialized Tally with all known client buckets (and
-// "unknown") pre-seeded to zero.
+// NewTally returns an initialized Tally with all known client buckets.
 func NewTally() *Tally {
-	tally := &Tally{cl: map[codes.Code]int{}, el: map[codes.Code]int{}}
+	tally := &Tally{
+		cl:         map[codes.Code]int{},
+		el:         map[codes.Code]int{},
+		clReleases: map[codes.Code]map[string]int{},
+		elReleases: map[codes.Code]map[string]int{},
+	}
+
 	for code := range codes.CL {
-		cannonical := codes.CanonicalizeCL(code)
-		tally.cl[cannonical] = 0
+		canonical := codes.CanonicalizeCL(code)
+		tally.cl[canonical] = 0
+		tally.clReleases[canonical] = map[string]int{}
 	}
 
 	for code := range codes.EL {
 		tally.el[code] = 0
+		tally.elReleases[code] = map[string]int{}
 	}
 
 	tally.cl[codes.Unknown] = 0
@@ -118,6 +127,16 @@ func (t *Tally) Add(r SlotResult) {
 	t.el[res.EL]++
 	t.cl[res.CL]++
 
+	// The Unknown bucket has no commit, so only identified clients contribute to
+	// the per-release breakdown.
+	if res.EL != codes.Unknown {
+		t.elReleases[res.EL][res.ELCommit]++
+	}
+
+	if res.CL != codes.Unknown {
+		t.clReleases[res.CL][res.CLCommit]++
+	}
+
 	if res.EL != codes.Unknown || res.CL != codes.Unknown {
 		t.identified++
 	}
@@ -131,5 +150,7 @@ func (t *Tally) Record(date time.Time) store.DayRecord {
 		IdentifiedBlocks: t.identified,
 		CL:               t.cl,
 		EL:               t.el,
+		CLReleases:       t.clReleases,
+		ELReleases:       t.elReleases,
 	}
 }

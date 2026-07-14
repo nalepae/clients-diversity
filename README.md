@@ -95,7 +95,15 @@ Running at 01:00 UTC leaves the previous day's final slot ample time to finalize
       "totalBlocks": 7123,
       "identifiedBlocks": 4210,
       "cl": { "PM": 1500, "LH": 900, ..., "unknown": 2913 },
-      "el": { "GE": 2200, "NM": 800, ..., "unknown": 2913 }
+      "el": { "GE": 2200, "NM": 800, ..., "unknown": 2913 },
+      "clReleases": {
+        "PM": { "5498": 1200, "54": 280, "": 20 },
+        "LH": { "176c": 900 }
+      },
+      "elReleases": {
+        "GE": { "117e": 2000, "9566": 200 },
+        "NM": { "c07a": 800 }
+      }
     }
   ]
 }
@@ -117,7 +125,9 @@ cd fetcher && go test ./...
 
 A single static page (`web/index.html`).
 It fetches `./data.json` and draws two stacked-area charts (CL and EL), one
-point per day.
+point per day, followed by one **per-client build chart** — a stacked area
+where each band is a distinct build (graffiti commit hash) of that client over
+time.
 
 ```sh
 python3 -m http.server 8000 --directory web

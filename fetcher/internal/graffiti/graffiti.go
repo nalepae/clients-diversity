@@ -11,10 +11,13 @@ import (
 
 var identRe = regexp.MustCompile(`([A-Z]{2})([0-9a-f]{0,8})([A-Z]{2})([0-9a-f]{0,8})$`)
 
-// Result holds the parsed client codes.
+// Result holds the parsed client codes and the short commit hash each client
+// packs after its code.
 type Result struct {
-	EL codes.Code
-	CL codes.Code
+	EL       codes.Code
+	ELCommit string
+	CL       codes.Code
+	CLCommit string
 }
 
 // DecodeHex converts a 0x-prefixed (or bare) hex graffiti string into its ASCII
@@ -44,7 +47,7 @@ func ParseText(text string) Result {
 	if m := identRe.FindStringSubmatch(text); m != nil {
 		el, cl := codes.Code(m[1]), codes.Code(m[3])
 		if codes.IsEL(el) && codes.IsCL(cl) {
-			return Result{EL: el, CL: codes.CanonicalizeCL(cl)}
+			return Result{EL: el, ELCommit: m[2], CL: codes.CanonicalizeCL(cl), CLCommit: m[4]}
 		}
 	}
 
