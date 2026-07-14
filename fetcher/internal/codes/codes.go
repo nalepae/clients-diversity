@@ -23,8 +23,8 @@ var EL = map[string]string{
 	"EG": "Erigon",
 	"RH": "Reth",
 	"EJ": "EthereumJS",
-	"EX": "ethrex",
-	"TE": "trin-execution",
+	"EX": "Ethrex",
+	"TE": "Trin-execution",
 }
 
 // CL maps consensus-layer client codes to their names. "PR" is included as an
