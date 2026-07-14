@@ -849,6 +849,27 @@
       const W = 1000, H = 300, PAD = { l: 52, r: 18, t: 16, b: 30 };
       const DIVERSITY_LIMIT = 33.3; // a single client above this is a known network risk
 
+      const CL_NAMES = {
+        CN: "Caplin",
+        GR: "Grandine",‡
+        LH: "Lighthouse",
+        LS: "Lodestar",
+        NB: "Nimbus",
+        PM: "Prysm",
+        TK: "Teku",
+      };
+
+      const EL_NAMES = {
+        BU: "Besu",
+        EG: "Erigon",
+        EJ: "EthereumJS",
+        EX: "Ethrex",
+        GE: "Geth",
+        NM: "Nethermind",
+        RH: "Reth",
+        TE: "Trin-execution",
+      };
+
       // Per-consensus-client hover notes shown on legend rows: when each client
       // started emitting the identification graffiti, how it treats a custom
       // graffiti, and any flag to disable the client identification. Keyed by CL code.
@@ -915,7 +936,7 @@
       // sits on the baseline. Colors are assigned to known clients by rank; unknown
       // is always the recessive slate regardless of where it ranks.
       function seriesFor(layer) {
-        const names = layer === "cl" ? (data.meta?.clCodes || {}) : (data.meta?.elCodes || {});
+        const names = layer === "cl" ? CL_NAMES : EL_NAMES;
         const last = days[days.length - 1][layer] || {};
         const totals = {}; let unknownTotal = 0;
         for (const d of days) {

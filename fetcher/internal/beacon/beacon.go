@@ -17,8 +17,7 @@ import (
 	"github.com/OffchainLabs/cl-dist/internal/graffiti"
 )
 
-// blockTimeUTC returns the wall-clock start time (UTC) of a mainnet slot,
-// derived from the genesis time and slot duration.
+// blockTimeUTC returns the wall-clock start time (UTC) of a mainnet slot.
 func blockTimeUTC(slot uint64) time.Time {
 	return time.Unix(aggregate.MainnetGenesisTime+int64(slot)*aggregate.MainnetSecondsPerSlot, 0).UTC()
 }
@@ -30,7 +29,7 @@ type Client struct {
 	maxRetries int
 }
 
-// New returns a Client for the given base URL (e.g. http://localhost:3500).
+// New returns a new Client.
 func New(baseURL string, timeout time.Duration, maxRetries int) *Client {
 	return &Client{
 		baseURL:    baseURL,
@@ -49,6 +48,7 @@ func logReq(req *http.Request, status int, dur time.Duration, extra string) {
 	if extra != "" {
 		extra = " " + extra
 	}
+
 	log.Printf("[beacon] %s %s -> %d (%s)%s", req.Method, req.URL, status, dur, extra)
 }
 
@@ -71,11 +71,12 @@ func (c *Client) GraffitiAtSlot(ctx context.Context, slot uint64) (graffitiHex s
 	url := c.baseURL + "/eth/v1/beacon/blinded_blocks/" + strconv.FormatUint(slot, 10)
 
 	var lastErr error
-	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+	for attempt := range c.maxRetries {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
 				return "", false, ctx.Err()
+
 			case <-time.After(backoff(attempt)):
 			}
 		}
@@ -84,11 +85,13 @@ func (c *Client) GraffitiAtSlot(ctx context.Context, slot uint64) (graffitiHex s
 		if e == nil {
 			return g, ok, nil
 		}
+
 		lastErr = e
 		if !retryable {
 			return "", false, e
 		}
 	}
+
 	return "", false, fmt.Errorf("slot %d: %w", slot, lastErr)
 }
 
@@ -115,9 +118,11 @@ func (c *Client) tryGraffiti(ctx context.Context, url string, slot uint64) (graf
 		// No block proposed at this slot (skipped/orphaned).
 		io.Copy(io.Discard, resp.Body)
 		return "", false, false, nil
+
 	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
 		io.Copy(io.Discard, resp.Body)
 		return "", false, true, fmt.Errorf("beacon returned status %d", resp.StatusCode)
+
 	case resp.StatusCode != http.StatusOK:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return "", false, false, fmt.Errorf("beacon returned status %d: %s", resp.StatusCode, string(body))
@@ -155,11 +160,12 @@ func (c *Client) FinalizedSlot(ctx context.Context) (uint64, error) {
 	url := c.baseURL + "/eth/v1/beacon/headers/finalized"
 
 	var lastErr error
-	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+	for attempt := range c.maxRetries {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
 				return 0, ctx.Err()
+
 			case <-time.After(backoff(attempt)):
 			}
 		}
@@ -168,11 +174,13 @@ func (c *Client) FinalizedSlot(ctx context.Context) (uint64, error) {
 		if e == nil {
 			return slot, nil
 		}
+
 		lastErr = e
 		if !retryable {
 			return 0, e
 		}
 	}
+
 	return 0, fmt.Errorf("finalized header: %w", lastErr)
 }
 
@@ -195,6 +203,7 @@ func (c *Client) tryFinalized(ctx context.Context, url string) (slot uint64, ret
 	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
 		io.Copy(io.Discard, resp.Body)
 		return 0, true, fmt.Errorf("beacon returned status %d", resp.StatusCode)
+
 	case resp.StatusCode != http.StatusOK:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return 0, false, fmt.Errorf("beacon returned status %d: %s", resp.StatusCode, string(body))
@@ -204,10 +213,12 @@ func (c *Client) tryFinalized(ctx context.Context, url string) (slot uint64, ret
 	if err := json.NewDecoder(resp.Body).Decode(&hr); err != nil {
 		return 0, true, fmt.Errorf("decoding header response: %w", err)
 	}
+
 	s, err := strconv.ParseUint(hr.Data.Header.Message.Slot, 10, 64)
 	if err != nil {
 		return 0, false, fmt.Errorf("parsing finalized slot %q: %w", hr.Data.Header.Message.Slot, err)
 	}
+
 	return s, false, nil
 }
 

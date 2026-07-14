@@ -13,7 +13,6 @@ import (
 
 	"github.com/OffchainLabs/cl-dist/internal/aggregate"
 	"github.com/OffchainLabs/cl-dist/internal/beacon"
-	"github.com/OffchainLabs/cl-dist/internal/codes"
 	"github.com/OffchainLabs/cl-dist/internal/store"
 )
 
@@ -208,8 +207,6 @@ func writeMeta(df *store.DataFile, cfg config, lastCompleted string) {
 	df.Meta.LastCompletedDate = lastCompleted
 	df.Meta.GenesisTime = aggregate.MainnetGenesisTime
 	df.Meta.SecondsPerSlot = aggregate.MainnetSecondsPerSlot
-	df.Meta.CLCodes = codes.CLNames()
-	df.Meta.ELCodes = codes.ELNames()
 }
 
 func getenv(key, def string) string {

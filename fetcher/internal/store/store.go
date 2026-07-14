@@ -10,26 +10,27 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/OffchainLabs/cl-dist/internal/codes"
 )
 
-// Meta holds run metadata and the code→name legends embedded for the frontend.
+// Meta holds run metadata for the frontend. Code→name legends are a display
+// concern and live in the frontend, not here.
 type Meta struct {
-	GeneratedAt       string            `json:"generatedAt"`
-	StartDate         string            `json:"startDate"`
-	LastCompletedDate string            `json:"lastCompletedDate"`
-	GenesisTime       int64             `json:"genesisTime"`
-	SecondsPerSlot    int64             `json:"secondsPerSlot"`
-	CLCodes           map[string]string `json:"clCodes"`
-	ELCodes           map[string]string `json:"elCodes"`
+	GeneratedAt       string `json:"generatedAt"`
+	StartDate         string `json:"startDate"`
+	LastCompletedDate string `json:"lastCompletedDate"`
+	GenesisTime       int64  `json:"genesisTime"`
+	SecondsPerSlot    int64  `json:"secondsPerSlot"`
 }
 
 // DayRecord holds aggregated per-day counts for one UTC date.
 type DayRecord struct {
-	Date             string         `json:"date"` // YYYY-MM-DD (UTC)
-	TotalBlocks      int            `json:"totalBlocks"`
-	IdentifiedBlocks int            `json:"identifiedBlocks"`
-	CL               map[string]int `json:"cl"`
-	EL               map[string]int `json:"el"`
+	Date             string             `json:"date"` // YYYY-MM-DD (UTC)
+	TotalBlocks      int                `json:"totalBlocks"`
+	IdentifiedBlocks int                `json:"identifiedBlocks"`
+	CL               map[codes.Code]int `json:"cl"`
+	EL               map[codes.Code]int `json:"el"`
 }
 
 // DataFile is the root JSON document.
@@ -45,13 +46,16 @@ func Load(path string) (*DataFile, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return &DataFile{}, nil
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
+
 	var df DataFile
 	if err := json.Unmarshal(b, &df); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
+
 	return &df, nil
 }
 
@@ -78,20 +82,25 @@ func Save(path string, df *DataFile) error {
 		tmp.Close()
 		return fmt.Errorf("chmod temp file: %w", err)
 	}
+
 	if _, err := tmp.Write(b); err != nil {
 		tmp.Close()
 		return fmt.Errorf("writing temp file: %w", err)
 	}
+
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
 		return fmt.Errorf("syncing temp file: %w", err)
 	}
+
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
+
 	if err := os.Rename(tmpName, path); err != nil {
 		return fmt.Errorf("renaming temp file into place: %w", err)
 	}
+
 	return nil
 }
 

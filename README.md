@@ -88,9 +88,7 @@ Running at 01:00 UTC leaves the previous day's final slot ample time to finalize
     "startDate": "2026-05-22",
     "lastCompletedDate": "2026-06-17",
     "genesisTime": 1606824023,
-    "secondsPerSlot": 12,
-    "clCodes": { "PM": "Prysm", "LH": "Lighthouse", ... },
-    "elCodes": { "GE": "Geth", "NM": "Nethermind", ... }
+    "secondsPerSlot": 12
   },
   "days": [
     {
@@ -104,8 +102,9 @@ Running at 01:00 UTC leaves the previous day's final slot ample time to finalize
 }
 ```
 
-The `meta` block carries the code→name legends so the frontend needs no
-hardcoded client list.
+The data carries only two-letter client codes. Mapping a code to its
+human-readable name (e.g. `BU` → Besu) is a display concern and lives in the
+frontend (`web/index.html`), not the fetcher.
 
 ### Test
 

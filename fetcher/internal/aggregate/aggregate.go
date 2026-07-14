@@ -17,15 +17,15 @@ const (
 	MainnetSecondsPerSlot int64 = 12
 )
 
-// Mainnet returns the Chain configured for Ethereum mainnet.
-func Mainnet() Chain {
-	return Chain{GenesisTime: MainnetGenesisTime, SecondsPerSlot: MainnetSecondsPerSlot}
-}
-
 // Chain holds the parameters needed to convert between slots and wall-clock time.
 type Chain struct {
 	GenesisTime    int64
 	SecondsPerSlot int64
+}
+
+// Mainnet returns the Chain configured for Ethereum mainnet.
+func Mainnet() Chain {
+	return Chain{GenesisTime: MainnetGenesisTime, SecondsPerSlot: MainnetSecondsPerSlot}
 }
 
 // SlotRangeForDate returns the inclusive [start, end] slot range whose slot
@@ -79,25 +79,27 @@ type SlotResult struct {
 type Tally struct {
 	total      int
 	identified int
-	cl         map[string]int
-	el         map[string]int
+	cl         map[codes.Code]int
+	el         map[codes.Code]int
 }
 
 // NewTally returns an initialized Tally with all known client buckets (and
-// "unknown") pre-seeded to zero so every day record has a consistent shape.
+// "unknown") pre-seeded to zero.
 func NewTally() *Tally {
-	t := &Tally{cl: map[string]int{}, el: map[string]int{}}
-	for code := range codes.CLNames() {
-		t.cl[code] = 0
+	tally := &Tally{cl: map[codes.Code]int{}, el: map[codes.Code]int{}}
+	for code := range codes.CL {
+		cannonical := codes.CanonicalizeCL(code)
+		tally.cl[cannonical] = 0
 	}
 
-	for code := range codes.ELNames() {
-		t.el[code] = 0
+	for code := range codes.EL {
+		tally.el[code] = 0
 	}
 
-	t.cl[codes.Unknown] = 0
-	t.el[codes.Unknown] = 0
-	return t
+	tally.cl[codes.Unknown] = 0
+	tally.el[codes.Unknown] = 0
+
+	return tally
 }
 
 // Add folds one slot result into the tally.

@@ -19,8 +19,8 @@ func TestParseText(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
-		wantEL string
-		wantCL string
+		wantEL codes.Code
+		wantCL codes.Code
 	}{
 		{"prysm canonical", "GE117ePM5498", "GE", "PM"},
 		{"nethermind prysm PR alias", "NMc07aPR1756", "NM", "PM"}, // PR folds to PM
