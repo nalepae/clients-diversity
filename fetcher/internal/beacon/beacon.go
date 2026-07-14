@@ -144,6 +144,71 @@ func (c *Client) tryGraffiti(ctx context.Context, url string, slot uint64) (graf
 	return graffitiHex, true, false, nil
 }
 
+// availabilityWindow is how many consecutive slots FirstAvailableSlot scans
+// when probing a candidate. A pruned node returns 404 for every slot below its
+// retention horizon, but so does a legitimately skipped slot, so a single
+// probe is ambiguous. Scanning a full epoch makes a run of skips
+// indistinguishable from pruned history and keeps the bisection predicate
+// monotonic.
+const availabilityWindow = 32
+
+// FirstAvailableSlot binary-searches for the earliest slot the node can still
+// serve a block for, between genesis and headSlot (which is assumed available).
+func (c *Client) FirstAvailableSlot(ctx context.Context, headSlot uint64) (uint64, error) {
+	log.Printf("[beacon] bisecting first available slot in [0, %d]", headSlot)
+
+	// Predicate: a block exists within [slot, slot+window).
+	// - Below the node's retention horizon every slot 404s so the predicate is false.
+	// - From the earliest retained block onward it is true. Bisect for the smallest slot
+	//   where it holds.
+	lo, hi := uint64(0), headSlot
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		_, found, err := c.firstPresentInRange(ctx, mid, min(mid+availabilityWindow-1, headSlot))
+		if err != nil {
+			return 0, fmt.Errorf("probing slot %d: %w", mid, err)
+		}
+
+		if found {
+			hi = mid
+			continue
+		}
+
+		lo = mid + 1
+	}
+
+	// lo now sits within availabilityWindow of the earliest retained block;
+	// scan forward to pin the exact slot.
+	slot, found, err := c.firstPresentInRange(ctx, lo, headSlot)
+	if err != nil {
+		return 0, fmt.Errorf("scanning from slot %d: %w", lo, err)
+	}
+
+	if !found {
+		return 0, fmt.Errorf("no block available at or before finalized slot %d", headSlot)
+	}
+
+	log.Printf("[beacon] bisection done: first available slot is %d", slot)
+	return slot, nil
+}
+
+// firstPresentInRange returns the first slot in [from, to] that has a block,
+// treating skipped/pruned slots (404) as absent.
+func (c *Client) firstPresentInRange(ctx context.Context, from, to uint64) (uint64, bool, error) {
+	for slot := from; slot <= to; slot++ {
+		_, ok, err := c.GraffitiAtSlot(ctx, slot)
+		if err != nil {
+			return 0, false, fmt.Errorf("slot %d: %w", slot, err)
+		}
+
+		if ok {
+			return slot, true, nil
+		}
+	}
+
+	return 0, false, nil
+}
+
 type headerResponse struct {
 	Data struct {
 		Header struct {

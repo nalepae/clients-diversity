@@ -68,7 +68,6 @@ Each option is a flag *or* an env var; the flag wins when both are set.
 |----------------------------------|--------------------|------------------------------------------|
 | `BEACON_URL` / `-beacon-url`     | _(required)_       | Beacon node REST base URL                |
 | `OUTPUT` / `-output`             | `../web/data.json` | Path to the JSON store                   |
-| `START_DATE` / `-start-date`     | `2026-05-22`       | Backfill start (UTC), used on first run  |
 | `REQ_TIMEOUT_SEC`                | `30`               | Per-request HTTP timeout (seconds)       |
 | `MAX_RETRIES`                    | `3`                | Retries for transient beacon errors      |
 

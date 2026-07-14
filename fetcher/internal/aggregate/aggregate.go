@@ -45,6 +45,11 @@ func (c Chain) SlotRangeForDate(date time.Time) (start, end uint64) {
 	return start, firstNext - 1
 }
 
+// SlotStartTime returns the wall-clock UTC start time of a slot.
+func (c Chain) SlotStartTime(slot uint64) time.Time {
+	return time.Unix(c.GenesisTime+int64(slot)*c.SecondsPerSlot, 0).UTC()
+}
+
 func (c Chain) firstSlotAtOrAfter(unixTime int64) uint64 {
 	if unixTime <= c.GenesisTime {
 		return 0

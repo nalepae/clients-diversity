@@ -21,7 +21,6 @@ const dailyRunHourUTC = 1
 type config struct {
 	beaconURL  string
 	output     string
-	startDate  string
 	reqTimeout time.Duration
 	maxRetries int
 }
@@ -30,14 +29,12 @@ func loadConfig() config {
 	config := config{
 		beaconURL:  getenv("BEACON_URL", ""),
 		output:     getenv("OUTPUT", "../web/data.json"),
-		startDate:  getenv("START_DATE", ""),
 		reqTimeout: time.Duration(getenvInt("REQ_TIMEOUT_SEC", 30)) * time.Second,
 		maxRetries: getenvInt("MAX_RETRIES", 3),
 	}
 
 	flag.StringVar(&config.beaconURL, "beacon-url", config.beaconURL, "Beacon node REST base URL (e.g. http://localhost:3500)")
 	flag.StringVar(&config.output, "output", config.output, "Path to the data.json store")
-	flag.StringVar(&config.startDate, "start-date", config.startDate, "Backfill start date (YYYY-MM-DD, UTC) used on first run")
 	flag.Parse()
 
 	return config
@@ -47,10 +44,6 @@ func main() {
 	cfg := loadConfig()
 	if cfg.beaconURL == "" {
 		log.Fatal("BEACON_URL (or -beacon-url) is required")
-	}
-
-	if cfg.startDate == "" {
-		log.Fatal("START_DATE (or -start-date) is required")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -106,7 +99,7 @@ func run(ctx context.Context, cfg config) error {
 	}
 
 	// Determine the inclusive [from, to] UTC date range to process.
-	from, err := resumeFrom(df, cfg.startDate)
+	from, err := resumeFrom(ctx, client, chain, df, finalizedSlot)
 	if err != nil {
 		return fmt.Errorf("resumeFrom: %w", err)
 	}
@@ -120,7 +113,7 @@ func run(ctx context.Context, cfg config) error {
 			aggregate.DateString(to),
 		)
 
-		writeMeta(df, cfg, df.Meta.LastCompletedDate)
+		writeMeta(df, df.Meta.LastCompletedDate)
 		return store.Save(cfg.output, df)
 	}
 
@@ -145,7 +138,7 @@ func run(ctx context.Context, cfg config) error {
 
 		rec, err := processDay(ctx, client, chain, day)
 		if err != nil {
-			writeMeta(df, cfg, df.Meta.LastCompletedDate)
+			writeMeta(df, df.Meta.LastCompletedDate)
 			if err := store.Save(cfg.output, df); err != nil {
 				log.Printf("save failed: %v", err)
 			}
@@ -154,7 +147,7 @@ func run(ctx context.Context, cfg config) error {
 		}
 
 		df.AppendDay(rec)
-		writeMeta(df, cfg, rec.Date)
+		writeMeta(df, rec.Date)
 		if err := store.Save(cfg.output, df); err != nil {
 			return fmt.Errorf("save: %w", err)
 		}
@@ -166,7 +159,7 @@ func run(ctx context.Context, cfg config) error {
 	return nil
 }
 
-func resumeFrom(df *store.DataFile, startDate string) (time.Time, error) {
+func resumeFrom(ctx context.Context, client *beacon.Client, chain aggregate.Chain, df *store.DataFile, finalizedSlot uint64) (time.Time, error) {
 	if df.Meta.LastCompletedDate != "" {
 		last, err := aggregate.ParseDate(df.Meta.LastCompletedDate)
 		if err != nil {
@@ -174,11 +167,27 @@ func resumeFrom(df *store.DataFile, startDate string) (time.Time, error) {
 		}
 		return last.AddDate(0, 0, 1), nil
 	}
-	d, err := aggregate.ParseDate(startDate)
+
+	// First run: start from the earliest fully-available UTC day the node holds,
+	// discovered by bisecting the beacon node's retained history.
+	firstSlot, err := client.FirstAvailableSlot(ctx, finalizedSlot)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid start date %q: %w", startDate, err)
+		return time.Time{}, fmt.Errorf("finding first available slot: %w", err)
 	}
-	return d, nil
+
+	from := firstFullDay(chain, firstSlot)
+	log.Printf("no prior data: earliest available slot is %d; backfilling from %s", firstSlot, aggregate.DateString(from))
+	return from, nil
+}
+
+// firstFullDay returns the first UTC date for which the node holds every slot.
+func firstFullDay(chain aggregate.Chain, firstSlot uint64) time.Time {
+	day := chain.SlotStartTime(firstSlot).Truncate(24 * time.Hour)
+	if dayStartSlot, _ := chain.SlotRangeForDate(day); firstSlot > dayStartSlot {
+		day = day.AddDate(0, 0, 1)
+	}
+
+	return day
 }
 
 func processDay(ctx context.Context, client *beacon.Client, chain aggregate.Chain, date time.Time) (store.DayRecord, error) {
@@ -201,9 +210,11 @@ func processDay(ctx context.Context, client *beacon.Client, chain aggregate.Chai
 	return tally.Record(date), nil
 }
 
-func writeMeta(df *store.DataFile, cfg config, lastCompleted string) {
+func writeMeta(df *store.DataFile, lastCompleted string) {
 	df.Meta.GeneratedAt = time.Now().UTC().Format(time.RFC3339)
-	df.Meta.StartDate = cfg.startDate
+	if len(df.Days) > 0 {
+		df.Meta.StartDate = df.Days[0].Date
+	}
 	df.Meta.LastCompletedDate = lastCompleted
 	df.Meta.GenesisTime = aggregate.MainnetGenesisTime
 	df.Meta.SecondsPerSlot = aggregate.MainnetSecondsPerSlot
