@@ -1473,6 +1473,10 @@
         for (const s of ordered) {
           const v = bucketVal(chart, last, s.code);
           const share = (v / total) * 100;
+          // On a build chart, drop legend rows that are exactly 0% on the latest
+          // day (superseded or not-yet-adopted versions). Their historical band
+          // still renders in the chart; only the legend row is hidden.
+          if (chart.kind === "build" && v === 0) continue;
           const isOff = hidden[chart.id].has(s.code);
           // Diversity alarm only makes sense for a client's share of a layer.
           const flagged = chart.kind === "layer" && !s.recessive && share > DIVERSITY_LIMIT;
