@@ -922,16 +922,9 @@
         TE: "Trin-execution",
       };
 
-      // Build-commit → version and version → publish-date maps, both keyed by
-      // client code. Formerly hand-maintained here; now generated automatically
-      // from each client's GitHub releases by the fetcher and delivered in the
-      // `releases` section of data.json. Populated from `data` once it loads.
       let RELEASES = {};       // code -> { 4-hex build commit -> version }
       let RELEASE_DATES = {};  // code -> { version -> "YYYY-MM-DD" (UTC) }
 
-      // Per-consensus-client hover notes shown on legend rows: when each client
-      // started emitting the identification graffiti, how it treats a custom
-      // graffiti, and any flag to disable the client identification. Keyed by CL code.
       const CLIENT_NOTES = {
         PM: "Before v7.1.4 excluded, Prysm does not add the client identification.",
         LH: "Before v8.2.0 excluded, Lighthouse does not add the client identification by default if a custom graffiti is set.",
@@ -986,9 +979,6 @@
         return;
       }
 
-      // Release maps are generated from GitHub by the fetcher and delivered in
-      // data.json. Fall back to empty maps (build charts fold everything into
-      // "other builds") if an older data.json predates this section.
       RELEASES = (data.releases && data.releases.builds) || {};
       RELEASE_DATES = (data.releases && data.releases.dates) || {};
       // Caplin ships inside Erigon's binary; the fetcher already aliases CN→EG,
@@ -1077,21 +1067,12 @@
       }
 
       // Build (release) series for ONE client: one band per release VERSION,
-      // ordered by version. A graffiti commit resolves to a version by exact match
-      // or an unambiguous prefix relationship, so a client's truncated commit
-      // (e.g. Prysm "1f") merges into its full release ("1fc4" = v7.1.6). Commits
-      // that resolve to no single release fold into a recessive "other builds"
-      // band and commit-less blocks into "no build id" — both hidden by default.
-      // Returns null if never identified.
+      // ordered by version.
       function makeBuildChart(layer, code, clientName, tag) {
         const releaseCommits = RELEASES[code] || {}; // full 4-hex commit -> version
         const knownCommits = Object.keys(releaseCommits);
 
-        // Resolve a graffiti commit to a known version. Exact match wins; else the
-        // commit and a release commit must be prefixes of one another (truncation)
-        // AND that release must be the only such match — otherwise it is ambiguous.
-        // Memoized: the prefix scan is over the client's whole tag history (now
-        // hundreds of commits), and the same commits recur on every day.
+        // Resolve a graffiti commit to a known version.
         const resolveCache = new Map();
         function resolveVersion(commit) {
           if (!commit) return null;
@@ -1281,6 +1262,12 @@
         }
       }
 
+      function seriesTopToBottom(chart) {
+        if (chart.kind === "build") return chart.series;
+        const last = days[days.length - 1];
+        return [...chart.series].sort((a, b) => bucketVal(chart, last, a.code) - bucketVal(chart, last, b.code));
+      }
+
       function renderPanel(chart) {
         const panel = document.createElement("section");
         panel.className = "panel" + (chart.kind === "build" ? " build" : "");
@@ -1293,7 +1280,8 @@
           '<span class="meta">' + (mode === "pct" ? chart.metaPct : "blocks / day") + '</span>';
         panel.appendChild(head);
 
-        const visible = chart.series.filter((s) => !hidden[chart.id].has(s.code));
+        const order = seriesTopToBottom(chart);
+        const visible = order.filter((s) => !hidden[chart.id].has(s.code));
 
         const scale = vScale(chart, visible);
         const topPct = scale * 100;                  // pct mode: % at the top of the axis
@@ -1316,10 +1304,9 @@
           svg.appendChild(text(PAD.l - 8, y + 3.5, label, { "text-anchor": "end", class: "axislabel y" }));
         }
 
-        // Stacked areas, drawn so the legend's BOTTOM entry sits on the baseline.
-        // Layer charts keep series order (largest first = baseline); build charts
-        // list versions top-first in the legend, so reverse for the stack.
-        const stackOrder = chart.kind === "build" ? [...visible].reverse() : visible;
+        // Stacked areas, drawn so the legend's BOTTOM entry sits on the baseline:
+        // the stack is just the legend order (top to bottom) reversed.
+        const stackOrder = [...visible].reverse();
         const areas = el("g", { class: "areas reveal" });
         const pathByCode = {};
         const cumBelow = days.map(() => 0);
@@ -1470,12 +1457,8 @@
         const wrap = document.createElement("div");
         wrap.className = "legend";
 
-        // Build charts follow their own order ("no build id" / "other builds"
-        // first, then releases ascending by version). Layer charts sort by
-        // popularity on the latest day (least popular first) to match the stack.
-        const ordered = chart.kind === "build"
-          ? chart.series
-          : [...chart.series].sort((a, b) => bucketVal(chart, last, a.code) - bucketVal(chart, last, b.code));
+        // Same order the stack uses, so legend and chart always agree.
+        const ordered = seriesTopToBottom(chart);
         for (const s of ordered) {
           const v = bucketVal(chart, last, s.code);
           const share = (v / total) * 100;
