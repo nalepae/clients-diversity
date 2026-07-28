@@ -6,9 +6,14 @@ diversity over time, measured by **block production**. It reads the
 codes that clients embed in beacon-block **graffiti** and aggregates them into
 one point per UTC day.
 
-<img width="1065" height="1323" alt="image" src="https://github.com/user-attachments/assets/6abf78ea-7268-4e5b-a119-3038bceebe0d" />
-<img width="1025" height="575" alt="image" src="https://github.com/user-attachments/assets/183dff17-29c1-4923-b2d3-18fea9bffaba" />
-
+<img width="1158" height="855" alt="image" src="https://github.com/user-attachments/assets/84ecc598-b41e-4957-95e3-7a10327d9b4e" />
+<img width="1138" height="1282" alt="image" src="https://github.com/user-attachments/assets/c8f698d8-cb73-4e89-8a8e-baf6d87aebf2" />
+<img width="1144" height="733" alt="image" src="https://github.com/user-attachments/assets/975f1d78-ee7d-4df9-96dc-802d9acc6da7" />
+<img width="1148" height="855" alt="image" src="https://github.com/user-attachments/assets/dc5419f1-4263-4cc8-be59-34ca0a676f9b" />
+<img width="1138" height="946" alt="image" src="https://github.com/user-attachments/assets/776ae73b-10a0-4134-b785-11675efc6548" />
+<img width="1144" height="1256" alt="image" src="https://github.com/user-attachments/assets/e3c9b76f-e5aa-41a5-9c1f-5802dcc5eb29" />
+<img width="1151" height="1290" alt="image" src="https://github.com/user-attachments/assets/2a97e5b5-33e1-434c-a5e6-6d879ba79b52" />
+<img width="1153" height="1394" alt="image" src="https://github.com/user-attachments/assets/dd42d2ac-6655-41ad-a222-c10188e46f4f" />
 
 The repo is two independent pieces, one per directory:
 
