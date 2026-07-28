@@ -145,15 +145,16 @@ func TestFetchDates_IncrementalStopsWhenAllKnown(t *testing.T) {
 	srv := pagedReleasesServer(t, &pages)
 	defer srv.Close()
 
-	// dates already holds every version on page 1, so nothing is new and paging
-	// stops after the first page.
-	dates := map[string]string{}
+	// builds and dates already hold every version on page 1, so nothing is new and
+	// paging stops after the first page.
+	builds, dates := map[string]string{}, map[string]string{}
 	for i := range 100 {
+		builds[fmt.Sprintf("%04x", i)] = fmt.Sprintf("v%d", i)
 		dates[fmt.Sprintf("v%d", i)] = "2026-01-01"
 	}
 
 	repo := Repo{Code: "NM", Owner: "o", Name: "n"}
-	needTags, err := testClient(srv).fetchDates(context.Background(), repo, map[string]string{}, dates)
+	needTags, err := testClient(srv).fetchDates(context.Background(), repo, builds, dates)
 	if err != nil {
 		t.Fatalf("fetchDates: %v", err)
 	}
@@ -307,6 +308,70 @@ func TestFetchRepo_ErrorPropagates(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "releases") {
 		t.Errorf("error = %v, want it to mention the failing releases request", err)
+	}
+}
+
+func TestFetchBuilds_SharedCommitPrefersRelease(t *testing.T) {
+	// Real shape of the GitHub /tags response: newest first, and a release sits on
+	// the same commit as its last candidate (Prysm v7.1.4) or as a stray tag
+	// (Reth "push" / v1.11.3). The release must win either way.
+	fake := fakeGitHub{
+		tags: `[
+			{"name":"v7.1.4","commit":{"sha":"1756000000000000000000000000000000000000"}},
+			{"name":"v7.1.4-rc.3","commit":{"sha":"1756000000000000000000000000000000000000"}},
+			{"name":"v7.1.4-rc.2","commit":{"sha":"1ab5000000000000000000000000000000000000"}},
+			{"name":"push","commit":{"sha":"d632000000000000000000000000000000000000"}},
+			{"name":"v1.11.3","commit":{"sha":"d632000000000000000000000000000000000000"}},
+			{"name":"26.2.0-RC4","commit":{"sha":"fade000000000000000000000000000000000000"}},
+			{"name":"26.2.0-RC5","commit":{"sha":"e5e9000000000000000000000000000000000000"}},
+			{"name":"26.2.0","commit":{"sha":"e5e9000000000000000000000000000000000000"}}
+		]`,
+	}
+	srv := fake.server(t)
+	defer srv.Close()
+
+	repo := Repo{Code: "PM", Owner: "o", Name: "n"}
+	// A previous run recorded the candidate: the rescan must correct it.
+	builds := map[string]string{"1756": "v7.1.4-rc.3"}
+	if err := testClient(srv).fetchBuilds(context.Background(), repo, builds); err != nil {
+		t.Fatalf("fetchBuilds: %v", err)
+	}
+
+	wantBuilds := map[string]string{
+		"1756": "v7.1.4",
+		"1ab5": "v7.1.4-rc.2", // candidate alone on its commit: kept
+		"d632": "v1.11.3",
+		"fade": "26.2.0-RC4",
+		"e5e9": "26.2.0",
+	}
+	if !reflect.DeepEqual(builds, wantBuilds) {
+		t.Errorf("builds = %v, want %v", builds, wantBuilds)
+	}
+}
+
+func TestBetterVersion(t *testing.T) {
+	for _, tc := range []struct {
+		candidate, current string
+		want               bool
+		why                string
+	}{
+		{"v7.1.4", "", true, "first tag on a commit always wins"},
+		{"v7.1.4", "v7.1.4-rc.3", true, "release beats its candidate"},
+		{"v7.1.4-rc.3", "v7.1.4", false, "candidate never beats its release"},
+		{"26.2.0", "26.2.0-RC5", true, "uppercase RC suffix"},
+		{"v0.35.0", "v0.35.0-beta.0", true, "beta suffix"},
+		{"v1.11.3", "push", true, "version beats a non-version tag"},
+		{"push", "v1.11.3", false, "non-version tag never beats a version"},
+		{"v1.28.1-rc.1", "v1.28.1-rc.0", true, "later candidate wins"},
+		{"v1.28.1-rc.0", "v1.28.1-rc.1", false, "earlier candidate loses"},
+		{"26.2.0-RC10", "26.2.0-RC9", true, "candidate numbers compare numerically"},
+		{"v1.23.0", "v1.9.2", true, "unrelated commits colliding: higher version"},
+		{"v1.9.2", "v1.23.0", false, "and stably so, whichever order they arrive"},
+		{"0.10.5", "0.10.5", false, "identical is not better"},
+	} {
+		if got := betterVersion(tc.candidate, tc.current); got != tc.want {
+			t.Errorf("betterVersion(%q, %q) = %v, want %v (%s)", tc.candidate, tc.current, got, tc.want, tc.why)
+		}
 	}
 }
 

@@ -135,7 +135,10 @@ func (c *client) fetchBuilds(ctx context.Context, repo Repo, builds map[string]s
 				continue
 			}
 
-			builds[tag.Commit.SHA[:buildKeyLen]] = version
+			key := tag.Commit.SHA[:buildKeyLen]
+			if betterVersion(version, builds[key]) {
+				builds[key] = version
+			}
 		}
 
 		if len(tags) < perPage {
