@@ -1090,25 +1090,40 @@
         // Resolve a graffiti commit to a known version. Exact match wins; else the
         // commit and a release commit must be prefixes of one another (truncation)
         // AND that release must be the only such match — otherwise it is ambiguous.
+        // Memoized: the prefix scan is over the client's whole tag history (now
+        // hundreds of commits), and the same commits recur on every day.
+        const resolveCache = new Map();
         function resolveVersion(commit) {
           if (!commit) return null;
-          if (releaseCommits[commit]) return releaseCommits[commit];
-          const m = knownCommits.filter((k) => k.startsWith(commit) || commit.startsWith(k));
-          return m.length === 1 ? releaseCommits[m[0]] : null;
+          if (resolveCache.has(commit)) return resolveCache.get(commit);
+          let out = releaseCommits[commit] || null;
+          if (!out) {
+            const m = knownCommits.filter((k) => k.startsWith(commit) || commit.startsWith(k));
+            out = m.length === 1 ? releaseCommits[m[0]] : null;
+          }
+          resolveCache.set(commit, out);
+          return out;
         }
 
-        // Tally the window into version buckets, "no build id" and "other builds".
+        // Tally the window into version buckets, "no build id" and "other builds",
+        // and precompute each day's resolved {key -> count} bucket once so render
+        // never re-resolves commits (this is the hot path on every legend toggle).
         const totals = {}; // version -> block count
         const otherCommits = new Set();
+        const bucketsByDay = new Map();
         let noBuildId = 0, other = 0;
         for (const d of days) {
           const rel = (d[layer + "Releases"] || {})[code] || {};
+          const bucket = {};
           for (const c in rel) {
             const v = resolveVersion(c);
+            const key = v ? v : (c === "" ? "" : "__other__");
+            bucket[key] = (bucket[key] || 0) + rel[c];
             if (v) totals[v] = (totals[v] || 0) + rel[c];
             else if (c === "") noBuildId += rel[c];
             else { other += rel[c]; otherCommits.add(c); }
           }
+          bucketsByDay.set(d, bucket);
         }
         const shown = Object.keys(totals);
         if (!shown.length && !noBuildId && !other) return null;
@@ -1148,16 +1163,7 @@
           title: clientName,
           metaPct: "share of " + clientName,
           series,
-          buckets: (d) => {
-            const rel = (d[layer + "Releases"] || {})[code] || {};
-            const out = {};
-            for (const c in rel) {
-              const v = resolveVersion(c);
-              const key = v ? v : (c === "" ? "" : "__other__");
-              out[key] = (out[key] || 0) + rel[c];
-            }
-            return out;
-          },
+          buckets: (d) => bucketsByDay.get(d) || {},
         };
       }
 
