@@ -469,13 +469,17 @@
     }
 
     .lrow .alarm {
-      font: 600 9px/1 var(--mono);
-      letter-spacing: .08em;
-      color: var(--glow);
-      border: 1px solid var(--glow-dim);
-      padding: 2px 5px;
-      border-radius: 4px;
-      margin-left: 8px;
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+      font: 600 11px/1 var(--sans);
+      color: var(--danger);
+      background: rgba(255, 138, 107, 0.14);
+      border: 1px solid rgba(255, 138, 107, 0.45);
+      padding: 4px 9px;
+      border-radius: 999px;
+      margin-left: 10px;
+      white-space: nowrap;
     }
 
     .lrow .info {
@@ -928,13 +932,14 @@
       const CLIENT_NOTES = {
         PM: "Before v7.1.4 excluded, Prysm does not add the client identification.",
         LH: "Before v8.2.0 excluded, Lighthouse does not add the client identification by default if a custom graffiti is set.",
-        LS: "Lodestar does not add the client identification if a custom graffiti is set.",
+        LS: "Before v1.45.0 excluded, Lodestar does not add the client identification by default if a custom graffiti is set.",
       };
 
       // Notable releases annotated on the timeline as dashed vertical markers.
       const EVENTS = [
         { date: "2026-05-22", code: "PM", label: "Prysm V7.1.4" },
         { date: "2026-06-22", code: "LH", label: "Lighthouse V8.2.0" },
+        { date: "2026-07-27", code: "LS", label: "Lodestar V1.45.0" },
       ];
 
       // Measured categorical palette — luminous on deep blue, none neon.
@@ -1485,7 +1490,7 @@
             (chart.kind === "build" && s.version ? ' <span class="sub">#' + esc(s.commit) + '</span>' : '') +
             (relDate ? ' <span class="sub">· ' + esc(relDate) + '</span>' : '') +
             (note ? ' <span class="info" role="img" aria-label="' + esc(note) + '">i</span>' : '') +
-            (flagged ? ' <span class="alarm">&gt;⅓</span>' : '') + '</span>' +
+            (flagged ? ' <span class="alarm">Warning: More than 1/3</span>' : '') + '</span>' +
             '<span class="lpct">' + share.toFixed(1) + '%</span>' +
             '<span class="lbar"><i style="width:' + Math.min(100, share).toFixed(1) +
             '%;background:' + s.color + '"></i></span>';
