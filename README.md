@@ -38,10 +38,10 @@ matches the trailing segment with the regex
 **identified** only when *both* codes are present and valid against the
 registries in `fetcher/internal/codes`:
 
-- **EL:** `GE` Geth · `NM` Nethermind · `BU` Besu · `EG` Erigon · `RH` Reth ·
-  `EJ` EthereumJS · `EX` ethrex · `TE` trin-execution
-- **CL:** `PM` Prysm · `LH` Lighthouse · `TK` Teku · `NB` Nimbus ·
-  `LS` Lodestar · `GR` Grandine · `CN` Caplin
+- **EL:** `BU` Besu · `EG` Erigon · `EJ` EthereumJS · `EX` ethrex · `GE` Geth ·
+  `NM` Nethermind · `RH` Reth
+- **CL:** `CN` Caplin · `GR` Grandine · `LH` Lighthouse · `LS` Lodestar ·
+  `NB` Nimbus · `PM` Prysm · `TK` Teku
 
 Anything that doesn't match a valid pair is bucketed as `unknown` for both
 layers.
@@ -62,21 +62,20 @@ BEACON_URL=http://localhost:3500 go run .
 
 ### Configuration
 
-Each option is a flag *or* an env var; the flag wins when both are set.
+Each option is a flag *or* an env var. The flag wins when both are set.
 
-| Env / flag                       | Default            | Purpose                                  |
-|----------------------------------|--------------------|------------------------------------------|
-| `BEACON_URL` / `-beacon-url`     | _(required)_       | Beacon node REST base URL                |
-| `OUTPUT` / `-output`             | `../web/data.json` | Path to the JSON store                   |
-| `REQ_TIMEOUT_SEC`                | `30`               | Per-request HTTP timeout (seconds)       |
-| `MAX_RETRIES`                    | `3`                | Retries for transient beacon errors      |
+| Env / flag                       | Default            | Purpose                                         |
+|----------------------------------|--------------------|-------------------------------------------------|
+| `BEACON_URL` / `-beacon-url`     | _(required)_       | Beacon node REST base URL                       |
+| `OUTPUT` / `-output`             | `../web/data.json` | Path to the JSON store                          |
+| `REQ_TIMEOUT_SEC`                | `30`               | Per-request HTTP timeout (seconds)              |
+| `MAX_RETRIES`                    | `3`                | Retries for transient beacon errors             |
+| `GITHUB_TOKEN`                   | _(empty)_          | Token for the GitHub release lookups (optional) |
 
 The tool is Ethereum **mainnet-only**.
 
 The job is **incremental and resumable**: Re-running when already up to date is
 a no-op, and a failed or interrupted run resumes from the last completed day.
-Running at 01:00 UTC leaves the previous day's final slot ample time to finalize
-(~13 min under normal conditions) before ingestion.
 
 ### Output format (`data.json`)
 
@@ -105,13 +104,19 @@ Running at 01:00 UTC leaves the previous day's final slot ample time to finalize
         "NM": { "c07a": 800 }
       }
     }
-  ]
+  ],
+  "releases": {
+    "builds": {
+      "GE": { "117e": "v1.17.3", "9566": "v1.16.9" },
+      "PM": { "5498": "v7.1.5" }
+    },
+    "dates": {
+      "GE": { "v1.17.3": "2026-05-11" },
+      "PM": { "v7.1.5": "2026-06-17" }
+    }
+  }
 }
 ```
-
-The data carries only two-letter client codes. Mapping a code to its
-human-readable name (e.g. `BU` → Besu) is a display concern and lives in the
-frontend (`web/index.html`), not the fetcher.
 
 ### Test
 
@@ -124,10 +129,6 @@ cd fetcher && go test ./...
 ## `web/`: Visualize
 
 A single static page (`web/index.html`).
-It fetches `./data.json` and draws two stacked-area charts (CL and EL), one
-point per day, followed by one **per-client build chart** — a stacked area
-where each band is a distinct build (graffiti commit hash) of that client over
-time.
 
 ```sh
 python3 -m http.server 8000 --directory web

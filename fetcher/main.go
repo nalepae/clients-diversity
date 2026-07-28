@@ -13,24 +13,27 @@ import (
 
 	"github.com/OffchainLabs/cl-dist/internal/aggregate"
 	"github.com/OffchainLabs/cl-dist/internal/beacon"
+	"github.com/OffchainLabs/cl-dist/internal/releases"
 	"github.com/OffchainLabs/cl-dist/internal/store"
 )
 
 const dailyRunHourUTC = 1
 
 type config struct {
-	beaconURL  string
-	output     string
-	reqTimeout time.Duration
-	maxRetries int
+	beaconURL   string
+	output      string
+	reqTimeout  time.Duration
+	maxRetries  int
+	githubToken string
 }
 
 func loadConfig() config {
 	config := config{
-		beaconURL:  getenv("BEACON_URL", ""),
-		output:     getenv("OUTPUT", "../web/data.json"),
-		reqTimeout: time.Duration(getenvInt("REQ_TIMEOUT_SEC", 30)) * time.Second,
-		maxRetries: getenvInt("MAX_RETRIES", 3),
+		beaconURL:   getenv("BEACON_URL", ""),
+		output:      getenv("OUTPUT", "../web/data.json"),
+		reqTimeout:  time.Duration(getenvInt("REQ_TIMEOUT_SEC", 30)) * time.Second,
+		maxRetries:  getenvInt("MAX_RETRIES", 3),
+		githubToken: getenv("GITHUB_TOKEN", ""),
 	}
 
 	flag.StringVar(&config.beaconURL, "beacon-url", config.beaconURL, "Beacon node REST base URL (e.g. http://localhost:3500)")
@@ -88,6 +91,11 @@ func run(ctx context.Context, cfg config) error {
 	df, err := store.Load(cfg.output)
 	if err != nil {
 		return fmt.Errorf("load: %w", err)
+	}
+
+	// Refresh the GitHub-derived release maps.
+	if err := updateReleases(ctx, cfg, df); err != nil {
+		return fmt.Errorf("updating releases: %w", err)
 	}
 
 	chain := aggregate.Mainnet()
@@ -208,6 +216,23 @@ func processDay(ctx context.Context, client *beacon.Client, chain aggregate.Chai
 	}
 
 	return tally.Record(date), nil
+}
+
+// updateReleases refreshes df.Releases from GitHub in place.
+func updateReleases(ctx context.Context, cfg config, df *store.DataFile) error {
+	if cfg.githubToken == "" {
+		log.Print("[releases] GITHUB_TOKEN not set. GitHub API is limited to 60 req/h and will possibly return 403.")
+	}
+
+	client := releases.New(cfg.githubToken, cfg.reqTimeout, cfg.maxRetries)
+	res, err := client.Fetch(ctx, df.Releases)
+	if err != nil {
+		return err
+	}
+
+	df.Releases = res
+	log.Printf("[releases] updated release maps for %d clients", len(df.Releases.Builds))
+	return nil
 }
 
 func writeMeta(df *store.DataFile, lastCompleted string) {

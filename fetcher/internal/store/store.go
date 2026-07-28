@@ -35,10 +35,22 @@ type DayRecord struct {
 	ELReleases       map[codes.Code]map[string]int `json:"elReleases"`
 }
 
+// Releases holds the GitHub-derived release metadata.
+// Both maps are keyed by client code.
+type Releases struct {
+	// Builds maps a graffiti build commit (first four hex chars of a release
+	// tag's commit SHA) to its version string.
+	Builds map[codes.Code]map[string]string `json:"builds"`
+
+	// Dates maps a version string to its GitHub publish date (YYYY-MM-DD UTC).
+	Dates map[codes.Code]map[string]string `json:"dates"`
+}
+
 // DataFile is the root JSON document.
 type DataFile struct {
-	Meta Meta        `json:"meta"`
-	Days []DayRecord `json:"days"`
+	Meta     Meta        `json:"meta"`
+	Days     []DayRecord `json:"days"`
+	Releases *Releases   `json:"releases,omitempty"`
 }
 
 // Load reads the data file at path. A missing file yields an empty DataFile
