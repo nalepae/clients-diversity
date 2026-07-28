@@ -1481,6 +1481,9 @@
           // Diversity alarm only makes sense for a client's share of a layer.
           const flagged = chart.kind === "layer" && !s.recessive && share > DIVERSITY_LIMIT;
           const note = chart.kind === "layer" ? CLIENT_NOTES[s.code] : null;
+          // GitHub publish date for this release, shown on build-chart rows.
+          const relDate = chart.kind === "build" && s.version
+            ? (RELEASE_DATES[chart.code] || {})[s.version] : null;
 
           const row = document.createElement("button");
           row.type = "button";
@@ -1491,6 +1494,7 @@
             '<span class="lname">' + esc(s.name) +
             (chart.kind === "layer" && s.code === "unknown" ? ' <span class="sub">no graffiti ID</span>' : '') +
             (chart.kind === "build" && s.version ? ' <span class="sub">#' + esc(s.commit) + '</span>' : '') +
+            (relDate ? ' <span class="sub">· ' + esc(relDate) + '</span>' : '') +
             (note ? ' <span class="info" role="img" aria-label="' + esc(note) + '">i</span>' : '') +
             (flagged ? ' <span class="alarm">&gt;⅓</span>' : '') + '</span>' +
             '<span class="lpct">' + share.toFixed(1) + '%</span>' +
