@@ -221,6 +221,27 @@
       box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 6px 18px -8px rgba(255, 180, 84, 0.7);
     }
 
+    .console .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .seg.zoom button {
+      padding: 8px 12px;
+    }
+
+    .seg.zoom button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .seg.zoom .span {
+      min-width: 8.5ch;
+      color: var(--ink);
+      cursor: default;
+    }
+
     .console .hint {
       font: 400 12.5px/1.4 var(--mono);
       color: var(--faint);
@@ -302,6 +323,38 @@
       width: 100%;
       height: auto;
       display: block;
+    }
+
+    /* Viewport scrollbar under a chart, inset to the plot area (PAD.l / PAD.r
+       of the 1000-wide viewBox). Only the native scrollbar shows. */
+    .xscroll {
+      margin: 2px 1.8% 0 5.2%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--muted) var(--hair-soft);
+    }
+
+    .xscroll > div {
+      height: 1px;
+    }
+
+    .xscroll::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .xscroll::-webkit-scrollbar-track {
+      background: var(--hair-soft);
+      border-radius: 4px;
+    }
+
+    .xscroll::-webkit-scrollbar-thumb {
+      background: var(--faint);
+      border-radius: 4px;
+    }
+
+    .xscroll::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
     }
 
     svg.chart text {
@@ -885,9 +938,16 @@
     </section>
 
     <div class="console">
-      <div class="seg" id="mode-toggle" role="group" aria-label="Value mode">
-        <button data-mode="pct" class="active">Share %</button>
-        <button data-mode="abs">Blocks</button>
+      <div class="controls">
+        <div class="seg" id="mode-toggle" role="group" aria-label="Value mode">
+          <button data-mode="pct" class="active">Share %</button>
+          <button data-mode="abs">Blocks</button>
+        </div>
+        <div class="seg zoom" id="zoom" role="group" aria-label="Time zoom" hidden>
+          <button data-zoom="out" aria-label="Zoom out (show more days)">−</button>
+          <button class="span" tabindex="-1" aria-live="polite"></button>
+          <button data-zoom="in" aria-label="Zoom in (show fewer days)">+</button>
+        </div>
       </div>
       <span class="hint">Click a series to mute it</span>
     </div>
@@ -983,6 +1043,18 @@
           '<div class="err">No completed days yet — the job ingests finalized UTC days only.</div>';
         return;
       }
+
+      // Viewport: at most viewDays days are drawn at once, panned with the
+      // horizontal scrollbar under each chart (shared by every chart). It starts
+      // on the most recent 100 days; the +/- zoom steps through ZOOM_LEVELS, the
+      // last one being the whole window. `vd` is the visible slice of `days`.
+      const ZOOM_LEVELS = [30, 60, 100, 200, 400, 800].filter((n) => n < days.length);
+      ZOOM_LEVELS.push(days.length);
+      let zoomIdx = Math.max(0, ZOOM_LEVELS.findIndex((n) => n >= 100));
+      let viewDays = ZOOM_LEVELS[zoomIdx];
+      let maxStart = days.length - viewDays;
+      let viewStart = maxStart;
+      let vd = days.slice(viewStart, viewStart + viewDays);
 
       RELEASES = (data.releases && data.releases.builds) || {};
       RELEASE_DATES = (data.releases && data.releases.dates) || {};
@@ -1209,38 +1281,38 @@
 
       // ---------- geometry ----------
       function xFor(i) {
-        if (days.length <= 1) return PAD.l + (W - PAD.l - PAD.r) / 2;
-        return PAD.l + (i * (W - PAD.l - PAD.r)) / (days.length - 1);
+        if (vd.length <= 1) return PAD.l + (W - PAD.l - PAD.r) / 2;
+        return PAD.l + (i * (W - PAD.l - PAD.r)) / (vd.length - 1);
       }
       function yFor(frac) { return PAD.t + (1 - frac) * (H - PAD.t - PAD.b); }
 
       // X coordinate for a calendar date (YYYY-MM-DD). Returns null if the date
-      // falls outside the loaded window. Interpolates between days when the exact
+      // falls outside the visible window. Interpolates between days when the exact
       // day is absent so markers land precisely on the time axis.
       function xForDate(target) {
-        const exact = days.findIndex((d) => d.date === target);
+        const exact = vd.findIndex((d) => d.date === target);
         if (exact >= 0) return xFor(exact);
         const t = Date.parse(target);
         if (isNaN(t)) return null;
         let lo = -1, hi = -1;
-        for (let i = 0; i < days.length; i++) {
-          const di = Date.parse(days[i].date);
+        for (let i = 0; i < vd.length; i++) {
+          const di = Date.parse(vd[i].date);
           if (di <= t) lo = i;
           if (di >= t && hi === -1) hi = i;
         }
         if (lo === -1 || hi === -1 || lo === hi) return null;
-        const tlo = Date.parse(days[lo].date), thi = Date.parse(days[hi].date);
+        const tlo = Date.parse(vd[lo].date), thi = Date.parse(vd[hi].date);
         const frac = (t - tlo) / (thi - tlo);
         return xFor(lo) + (xFor(hi) - xFor(lo)) * frac;
       }
 
-      // Peak stacked value across days, used as the top of the y-axis:
+      // Peak stacked value across the visible days, used as the top of the y-axis:
       //   abs => max block count;  pct => max stacked share of total in (0,1].
       // Muting clients lowers it, so the chart zooms to fill instead of leaving
       // empty space (e.g. below 100% once "unknown" is hidden).
       function vScale(chart, visible) {
         let scale = mode === "abs" ? 1 : 0;
-        for (const d of days) {
+        for (const d of vd) {
           let stacked = 0;
           for (const s of visible) stacked += bucketVal(chart, d, s.code);
           const v = mode === "abs" ? stacked : stacked / Math.max(chartTotal(chart, d), 1);
@@ -1261,8 +1333,15 @@
       const root = document.getElementById("charts");
       const tip = document.getElementById("tip");
 
-      function render() {
+      // Every rendered chart ({chart, scope, svg, visible, pathByCode}) and every
+      // viewport scrollbar, so a scroll redraws only the SVGs.
+      let drawn = [];
+      let scrollers = [];
+
+      function render(animate = true) {
         root.innerHTML = "";
+        drawn = [];
+        scrollers = [];
         let lastBuildLayer = null;
         for (const chart of charts) {
           // A labeled divider starts each per-client build group: before the EL
@@ -1276,7 +1355,48 @@
             root.appendChild(sep);
             lastBuildLayer = chart.layer;
           }
-          root.appendChild(renderPanel(chart));
+          root.appendChild(renderPanel(chart, animate));
+        }
+        syncScrollers(null);
+      }
+
+      // ---------- viewport scrollbar ----------
+      function makeScroller() {
+        const sc = document.createElement("div");
+        sc.className = "xscroll";
+        const inner = document.createElement("div");
+        inner.style.width = ((days.length / viewDays) * 100).toFixed(3) + "%";
+        sc.appendChild(inner);
+        sc.addEventListener("scroll", () => onScroll(sc));
+        scrollers.push(sc);
+        return sc;
+      }
+
+      // Scrollbar position -> first visible day. Programmatic syncs map back to
+      // the same viewStart (a day spans several pixels), so they do not loop.
+      let redrawPending = false, scrollSrc = null;
+      function onScroll(sc) {
+        const range = sc.scrollWidth - sc.clientWidth;
+        const start = range > 0 ? Math.round((sc.scrollLeft / range) * maxStart) : maxStart;
+        if (start === viewStart) return;
+        viewStart = start;
+        vd = days.slice(viewStart, viewStart + viewDays);
+        scrollSrc = sc;
+        if (redrawPending) return;
+        redrawPending = true;
+        requestAnimationFrame(() => {
+          redrawPending = false;
+          tip.style.display = "none";
+          for (const e of drawn) drawChart(e, false);
+          syncScrollers(scrollSrc);
+        });
+      }
+
+      function syncScrollers(except) {
+        for (const sc of scrollers) {
+          if (sc === except) continue;
+          const range = sc.scrollWidth - sc.clientWidth;
+          sc.scrollLeft = maxStart ? (viewStart / maxStart) * range : 0;
         }
       }
 
@@ -1286,7 +1406,7 @@
         return [...chart.series].sort((a, b) => bucketVal(chart, last, a.code) - bucketVal(chart, last, b.code));
       }
 
-      function renderPanel(chart) {
+      function renderPanel(chart, animate) {
         const panel = document.createElement("section");
         panel.className = "panel" + (chart.kind === "build" ? " build" : "");
 
@@ -1307,12 +1427,25 @@
         const order = seriesTopToBottom(chart);
         const visible = order.filter((s) => !hidden[chart.id].has(s.code));
 
+        const scope = document.createElement("div");
+        scope.className = "scope";
+        const entry = { chart, scope, svg: null, visible, pathByCode: {} };
+        drawChart(entry, animate);
+        drawn.push(entry);
+        if (maxStart > 0) scope.appendChild(makeScroller());
+        panel.appendChild(scope);
+        panel.appendChild(renderLegend(chart, entry.pathByCode));
+        return panel;
+      }
+
+      // (Re)draw a chart's SVG for the visible window `vd`. `animate` plays the
+      // load wipe; scroll redraws skip it.
+      function drawChart(entry, animate) {
+        const { chart, scope, visible } = entry;
         const scale = vScale(chart, visible);
         const topPct = scale * 100;                  // pct mode: % at the top of the axis
         const pctDigits = topPct < 12 ? 1 : 0;
 
-        const scope = document.createElement("div");
-        scope.className = "scope";
         const svg = el("svg", {
           viewBox: "0 0 " + W + " " + H, class: "chart", preserveAspectRatio: "none", role: "img",
           "aria-label": chart.title + " distribution over time"
@@ -1331,12 +1464,13 @@
         // Stacked areas, drawn so the legend's BOTTOM entry sits on the baseline:
         // the stack is just the legend order (top to bottom) reversed.
         const stackOrder = [...visible].reverse();
-        const areas = el("g", { class: "areas reveal" });
-        const pathByCode = {};
-        const cumBelow = days.map(() => 0);
+        const areas = el("g", { class: animate ? "areas reveal" : "areas" });
+        const pathByCode = entry.pathByCode;
+        for (const k in pathByCode) delete pathByCode[k];
+        const cumBelow = vd.map(() => 0);
         for (const s of stackOrder) {
           const topPts = [], botPts = [];
-          days.forEach((d, i) => {
+          vd.forEach((d, i) => {
             const v = valFrac(chart, d, s.code, scale);
             const x = xFor(i);
             botPts.push([x, yFor(cumBelow[i])]);
@@ -1357,10 +1491,10 @@
         svg.appendChild(areas);
 
         // x labels (~7)
-        const labelCount = Math.min(days.length, 7);
+        const labelCount = Math.min(vd.length, 7);
         for (let k = 0; k < labelCount; k++) {
-          const i = labelCount === 1 ? 0 : Math.round((k * (days.length - 1)) / (labelCount - 1));
-          svg.appendChild(text(xFor(i), H - PAD.b + 17, days[i].date.slice(5), { "text-anchor": "middle", class: "axislabel" }));
+          const i = labelCount === 1 ? 0 : Math.round((k * (vd.length - 1)) / (labelCount - 1));
+          svg.appendChild(text(xFor(i), H - PAD.b + 17, vd[i].date.slice(5), { "text-anchor": "middle", class: "axislabel" }));
         }
 
         // Dashed vertical release markers.
@@ -1422,21 +1556,20 @@
         });
         svg.appendChild(overlay);
 
-        scope.appendChild(svg);
-        panel.appendChild(scope);
-        panel.appendChild(renderLegend(chart, pathByCode));
-        return panel;
+        if (entry.svg) scope.replaceChild(svg, entry.svg);
+        else scope.prepend(svg);
+        entry.svg = svg;
       }
 
       function onHover(ev, svg, chart, visible, cross, marker) {
         const rect = svg.getBoundingClientRect();
         const svgX = ((ev.clientX - rect.left) / rect.width) * W;
         let i = 0;
-        if (days.length > 1) {
-          i = Math.round(((svgX - PAD.l) / (W - PAD.l - PAD.r)) * (days.length - 1));
-          i = Math.max(0, Math.min(days.length - 1, i));
+        if (vd.length > 1) {
+          i = Math.round(((svgX - PAD.l) / (W - PAD.l - PAD.r)) * (vd.length - 1));
+          i = Math.max(0, Math.min(vd.length - 1, i));
         }
-        const d = days[i], x = xFor(i);
+        const d = vd[i], x = xFor(i);
         cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("opacity", 0.8);
 
         const scale = vScale(chart, visible);
@@ -1577,6 +1710,37 @@
         for (const b of document.querySelectorAll("#mode-toggle button")) b.classList.toggle("active", b === btn);
         render();
       });
+
+      window.addEventListener("resize", () => syncScrollers(null));
+
+      // Zoom keeps the window's centre day in view; a window pinned to the most
+      // recent day stays pinned.
+      const zoomEl = document.getElementById("zoom");
+      function updateZoom() {
+        const all = viewDays >= days.length;
+        zoomEl.querySelector(".span").textContent = all ? "All · " + days.length + "d" : viewDays + " days";
+        zoomEl.querySelector('[data-zoom="out"]').disabled = zoomIdx === ZOOM_LEVELS.length - 1;
+        zoomEl.querySelector('[data-zoom="in"]').disabled = zoomIdx === 0;
+      }
+      zoomEl.hidden = ZOOM_LEVELS.length < 2;
+      zoomEl.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("button[data-zoom]");
+        if (!btn || btn.disabled) return;
+        const next = zoomIdx + (btn.dataset.zoom === "out" ? 1 : -1);
+        if (next < 0 || next >= ZOOM_LEVELS.length) return;
+        const pinned = viewStart === maxStart;
+        const centre = viewStart + viewDays / 2;
+        zoomIdx = next;
+        viewDays = ZOOM_LEVELS[zoomIdx];
+        maxStart = days.length - viewDays;
+        viewStart = pinned ? maxStart
+          : Math.max(0, Math.min(maxStart, Math.round(centre - viewDays / 2)));
+        vd = days.slice(viewStart, viewStart + viewDays);
+        tip.style.display = "none";
+        updateZoom();
+        render(false);
+      });
+      updateZoom();
 
       buildReadout();
       render();
